@@ -12,13 +12,14 @@
   --pink:#be185d;--pink-l:#fdf2f8;--pink-d:#9d174d;
   --green:#16a34a;--green-l:#f0fdf4;
   --amber:#d97706;--amber-l:#fffbeb;
+  --red-l:#fef2f2;--red:#b91c1c;
   --bg:#f0f4f8;--white:#fff;
   --border:#e2e8f0;--text:#0f172a;
   --muted:#64748b;--hint:#94a3b8
 }
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 
-/* ── HEADER ── */
+/* HEADER */
 .app-header{background:var(--navy);color:#fff;padding:20px 24px 16px}
 .app-header h1{font-size:18px;font-weight:700;letter-spacing:-0.3px}
 .app-header p{font-size:12px;opacity:.65;margin-top:4px}
@@ -32,7 +33,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 }
 .period select option{color:#000}
 
-/* ── CARDS ── */
+/* CARDS */
 .cards{display:flex;gap:10px;padding:14px 16px;flex-wrap:wrap}
 .card{flex:1 1 155px;background:var(--white);border-radius:10px;padding:12px 14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .card-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
@@ -44,27 +45,26 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 .c-g    {border-left:3px solid var(--blue)}.c-g .card-val    {color:var(--blue)}
 .c-s    {border-left:3px solid var(--pink)}.c-s .card-val    {color:var(--pink)}
 
-/* ── ACTIONS ── */
-.actions{display:flex;gap:8px;padding:0 16px 10px;flex-wrap:wrap}
+/* ACCIONES */
+.actions{display:flex;gap:8px;padding:0 16px 10px;flex-wrap:wrap;align-items:center}
 .btn{
   padding:6px 14px;border-radius:6px;border:1px solid var(--border);
   background:var(--white);color:var(--navy);
   font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s
 }
 .btn:hover{background:var(--bg)}
-.btn-reset{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+.btn-reset{border-color:#fecaca;background:var(--red-l);color:var(--red)}
 .btn-reset:hover{background:#fee2e2}
 .badge-auto{
   font-size:10px;color:var(--green);background:var(--green-l);
-  border-radius:4px;padding:2px 7px;border:1px solid #bbf7d0;align-self:center
+  border-radius:4px;padding:2px 7px;border:1px solid #bbf7d0;transition:opacity .4s
 }
 
-/* ── TABLE ── */
+/* TABLA */
 .table-wrap{overflow-x:auto;padding:0 16px}
 table{
-  width:100%;border-collapse:collapse;
-  background:var(--white);border-radius:10px;
-  overflow:hidden;font-size:12px;min-width:820px
+  width:100%;border-collapse:collapse;background:var(--white);
+  border-radius:10px;overflow:hidden;font-size:12px;min-width:900px
 }
 thead th{
   padding:9px 11px;font-weight:600;font-size:10px;
@@ -74,56 +74,87 @@ thead th{
 .h-base{background:var(--navy)}
 .h-g   {background:var(--blue)}
 .h-s   {background:var(--pink)}
-.align-r{text-align:right}
-.align-c{text-align:center}
+.align-r{text-align:right}.align-c{text-align:center}
 
 tbody tr:nth-child(odd) {background:#fff}
 tbody tr:nth-child(even){background:#f8fafc}
 tbody tr:hover{background:#f1f5fb;transition:background .1s}
-td{padding:8px 11px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
-
-.rubro-name{font-weight:600;color:#1e293b;display:block}
-.rubro-note{display:block;font-size:10px;color:var(--hint);font-style:italic;margin-top:2px}
-.td-monto  {text-align:right;font-weight:600}
-.td-vence  {text-align:center;color:var(--muted);font-size:11px}
-.td-pct-g  {text-align:center;color:var(--blue);font-weight:700}
-.td-pct-s  {text-align:center;color:var(--pink);font-weight:700;font-size:13px}
+td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.td-rubro {min-width:140px}
+.td-monto {text-align:right}
+.td-vence {text-align:center}
+.td-pct-g {text-align:center;color:var(--blue);font-weight:700}
+.td-pct-s {text-align:center;color:var(--pink);font-weight:700;font-size:14px}
 .td-aporte-g{text-align:right;color:var(--blue);font-weight:700}
 .td-aporte-s{text-align:right;color:var(--pink);font-weight:700}
-.td-estado {text-align:center}
+.td-estado  {text-align:center}
+.td-del     {text-align:center;width:34px;padding:4px 6px}
 
-/* INPUTS */
-input[type=number]{
-  border:1px solid var(--border);border-radius:5px;
-  padding:3px 5px;font-size:11px;font-family:inherit;
-  background:#fff;color:var(--text);transition:border-color .15s
+/* INPUTS INLINE */
+.inp-rubro{
+  width:100%;min-width:110px;
+  border:1px solid transparent;border-radius:4px;
+  padding:3px 5px;font-size:13px;font-weight:600;
+  font-family:inherit;color:#1e293b;background:transparent;
+  transition:border-color .12s,background .12s
 }
-input[type=number]:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(29,78,216,.12)}
-.inp-pct{
-  width:46px;text-align:center;
-  border-color:rgba(29,78,216,.3);
-  background:var(--blue-l);color:var(--blue);font-weight:700
+.inp-rubro:hover{border-color:var(--border);background:rgba(255,255,255,.8)}
+.inp-rubro:focus{outline:none;border-color:var(--blue);background:#fff;box-shadow:0 0 0 2px rgba(29,78,216,.1)}
+
+.inp-vence{
+  width:68px;text-align:center;font-size:11px;color:var(--muted);
+  border:1px solid transparent;border-radius:4px;
+  padding:2px 4px;font-family:inherit;background:transparent;transition:border-color .12s
 }
+.inp-vence:hover{border-color:var(--border);background:rgba(255,255,255,.8)}
+.inp-vence:focus{outline:none;border-color:var(--blue);background:#fff}
+
 .inp-monto{
-  width:124px;text-align:right;
-  border-color:#fcd34d;background:var(--amber-l)
+  width:112px;text-align:right;
+  border:1px solid var(--border);border-radius:5px;
+  padding:3px 5px;font-size:12px;font-weight:600;
+  font-family:inherit;background:#fff;color:var(--text);transition:border-color .12s
 }
+.inp-monto:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(29,78,216,.1)}
+
+.inp-pct{
+  width:44px;text-align:center;
+  border:1px solid rgba(29,78,216,.3);border-radius:5px;
+  padding:3px 4px;font-size:11px;font-weight:700;
+  font-family:inherit;background:var(--blue-l);color:var(--blue);transition:border-color .12s
+}
+.inp-pct:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px rgba(29,78,216,.12)}
 .pct-wrap{display:inline-flex;align-items:center;gap:2px}
 .pct-sym{font-size:10px;color:var(--blue)}
 
-/* ESTADO */
+/* ESTADO SELECT */
 select.estado{
   padding:3px 8px;border-radius:5px;font-size:10px;
-  cursor:pointer;font-weight:700;font-family:inherit;border:1px solid;
-  transition:all .15s
+  cursor:pointer;font-weight:700;font-family:inherit;border:1px solid;transition:all .15s
 }
-.estado-pendiente{background:var(--amber-l);color:#854d0e;border-color:#fde68a}
-.estado-pagado   {background:var(--green-l);color:#166534;border-color:#86efac}
-.badge-gratuidad{
-  display:inline-block;padding:2px 8px;border-radius:20px;
-  font-size:9px;font-weight:700;background:var(--blue-l);
-  color:var(--blue-d);text-transform:uppercase;letter-spacing:.4px
+.estado-pendiente {background:var(--amber-l);color:#854d0e;border-color:#fde68a}
+.estado-pagado    {background:var(--green-l);color:#166534;border-color:#86efac}
+.estado-gratuidad {background:var(--blue-l) ;color:var(--blue-d);border-color:rgba(29,78,216,.3)}
+
+/* BOTÓN ELIMINAR */
+.btn-del{
+  width:24px;height:24px;border-radius:4px;
+  border:1px solid #fecaca;background:var(--red-l);color:var(--red);
+  font-size:13px;cursor:pointer;display:inline-flex;align-items:center;
+  justify-content:center;transition:background .15s;font-family:inherit;line-height:1;padding:0
 }
+.btn-del:hover{background:#fee2e2;border-color:#fca5a5}
+
+/* BOTÓN AGREGAR */
+.table-add{padding:10px 16px}
+.btn-add{
+  width:100%;padding:9px 16px;border-radius:6px;
+  border:1.5px dashed rgba(29,78,216,.35);
+  background:transparent;color:var(--blue);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px
+}
+.btn-add:hover{background:var(--blue-l);border-style:solid;border-color:rgba(29,78,216,.5)}
 
 /* TFOOT */
 tfoot td{
@@ -136,7 +167,7 @@ tfoot td{
 .tf-s    {text-align:right;color:#f9a8d4}
 .tf-dash {text-align:center;opacity:.3}
 
-/* FORMULAS */
+/* FÓRMULAS */
 .formulas{
   margin:14px 16px 0;background:var(--white);
   border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06)
@@ -155,15 +186,12 @@ tfoot td{
 .f-lbl{font-size:11px;font-weight:600;color:#334155;min-width:160px}
 code{
   background:#f1f5f9;padding:1px 7px;border-radius:4px;
-  font-family:'Cascadia Code','Fira Code',monospace;
-  font-size:11px;color:var(--navy)
+  font-family:'Cascadia Code','Fira Code',monospace;font-size:11px;color:var(--navy)
 }
 .f-hint{font-size:10px;color:var(--hint)}
 .f-tip{
-  margin-top:10px;padding:8px 10px;
-  background:#fff7ed;border-radius:6px;
-  border:1px solid #fed7aa;font-size:10px;
-  color:#92400e;line-height:1.7
+  margin-top:10px;padding:8px 10px;background:#fff7ed;
+  border-radius:6px;border:1px solid #fed7aa;font-size:10px;color:#92400e;line-height:1.7
 }
 
 /* FOOTER */
@@ -171,17 +199,15 @@ code{
 
 /* PRINT */
 @media print{
-  .app-header .period,.actions,.formulas{display:none}
+  .app-header .period,.actions,.table-add,.formulas,.td-del,.btn-del{display:none}
   .table-wrap{overflow:visible}
   table{min-width:0}
-  tfoot td{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  tfoot td,thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
 </head>
 <body>
 
-<!-- ── HEADER ── -->
 <header class="app-header">
   <h1>Matriz de Responsabilidades Financieras</h1>
   <p>Gerson Arrieta · Saudith Reyes</p>
@@ -192,19 +218,16 @@ code{
   </div>
 </header>
 
-<!-- ── CARDS ── -->
 <div class="cards" id="cards"></div>
 
-<!-- ── ACCIONES ── -->
 <div class="actions">
   <button class="btn" id="btn-print">🖨️ Imprimir / PDF</button>
-  <button class="btn btn-reset" id="btn-reset">↺ Reiniciar datos</button>
-  <span class="badge-auto" id="badge-save">✔ Auto-guardado</span>
+  <button class="btn btn-reset" id="btn-reset">↺ Reiniciar</button>
+  <span class="badge-auto" id="badge-save" style="opacity:.4">✔ Guardado</span>
 </div>
 
-<!-- ── TABLA ── -->
 <div class="table-wrap">
-  <table aria-label="Matriz de responsabilidades financieras mensuales">
+  <table aria-label="Matriz financiera mensual">
     <thead>
       <tr>
         <th class="h-base">Rubro</th>
@@ -212,9 +235,10 @@ code{
         <th class="h-base align-c">Vencimiento</th>
         <th class="h-g align-c">% Participación<br>Gerson</th>
         <th class="h-s align-c">% Participación<br>Saudith</th>
-        <th class="h-g align-r">Aporte<br>Gerson ($)</th>
-        <th class="h-s align-r">Aporte<br>Saudith ($)</th>
+        <th class="h-g align-r">Aporte Gerson ($)</th>
+        <th class="h-s align-r">Aporte Saudith ($)</th>
         <th class="h-base align-c">Estado</th>
+        <th class="h-base align-c" aria-label="Acciones"></th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -222,51 +246,29 @@ code{
   </table>
 </div>
 
-<!-- ── FÓRMULAS ── -->
+<div class="table-add">
+  <button class="btn-add" id="btn-add">＋ Agregar ítem</button>
+</div>
+
 <details class="formulas">
   <summary>📋 Fórmulas para Google Sheets / Excel</summary>
   <div class="f-body">
-    <p class="f-section">Fórmulas por fila (suponiendo datos en filas 3–11):</p>
-    <div class="f-row">
-      <span class="f-lbl">Col E — % Saudith:</span>
-      <code>=100%-D3</code>
-      <span class="f-hint">→ copiar/arrastrar hasta E11</span>
-    </div>
-    <div class="f-row">
-      <span class="f-lbl">Col F — Aporte Gerson:</span>
-      <code>=B3*D3</code>
-      <span class="f-hint">→ copiar/arrastrar hasta F11</span>
-    </div>
-    <div class="f-row">
-      <span class="f-lbl">Col G — Aporte Saudith:</span>
-      <code>=B3*E3</code>
-      <span class="f-hint">→ copiar/arrastrar hasta G11</span>
-    </div>
-    <p class="f-section">Fórmulas de totales (fila 12):</p>
-    <div class="f-row">
-      <span class="f-lbl">Total Monto (col B):</span>
-      <code>=SUMA(B3:B11)</code>
-    </div>
-    <div class="f-row">
-      <span class="f-lbl">Total Gerson (col F):</span>
-      <code>=SUMA(F3:F11)</code>
-    </div>
-    <div class="f-row">
-      <span class="f-lbl">Total Saudith (col G):</span>
-      <code>=SUMA(G3:G11)</code>
-    </div>
+    <p class="f-section">Por fila (datos en filas 3–N):</p>
+    <div class="f-row"><span class="f-lbl">Col E — % Saudith:</span><code>=100%-D3</code><span class="f-hint">→ arrastrar hacia abajo</span></div>
+    <div class="f-row"><span class="f-lbl">Col F — Aporte Gerson:</span><code>=B3*D3</code><span class="f-hint">→ arrastrar hacia abajo</span></div>
+    <div class="f-row"><span class="f-lbl">Col G — Aporte Saudith:</span><code>=B3*E3</code><span class="f-hint">→ arrastrar hacia abajo</span></div>
+    <p class="f-section">Totales (última fila):</p>
+    <div class="f-row"><span class="f-lbl">Total Monto:</span><code>=SUMA(B3:B11)</code></div>
+    <div class="f-row"><span class="f-lbl">Total Gerson:</span><code>=SUMA(F3:F11)</code></div>
+    <div class="f-row"><span class="f-lbl">Total Saudith:</span><code>=SUMA(G3:G11)</code></div>
     <div class="f-tip">
-      💡 <strong>Validación Estado (col H):</strong> Datos → Validación de datos → Lista de elementos → <code>Pendiente,Pagado</code><br>
-      💡 <strong>Formato porcentaje:</strong> En cols D y E aplica formato "Porcentaje" para que las fórmulas muestren <em>50%</em> en lugar de <em>0.5</em>. Si usas porcentaje directo (50), cambia las fórmulas F3 y G3 a <code>=B3*(D3/100)</code> y <code>=B3*(E3/100)</code><br>
-      💡 <strong>Congelar encabezados:</strong> Ver → Inmovilizar → Hasta la fila 2 (para scroll cómodo)
+      💡 <strong>Validación Estado:</strong> Datos → Validación → Lista → <code>Pendiente,Pagado,Gratuidad</code><br>
+      💡 <strong>Formato %:</strong> Aplica "Porcentaje" en cols D y E — si usas valor entero (50), cambia a <code>=B3*(D3/100)</code>
     </div>
   </div>
 </details>
 
-<p class="footer">
-  A.S.T. Arrieta Soluciones Tecnológicas &nbsp;·&nbsp;
-  Los datos se guardan automáticamente en este dispositivo (localStorage)
-</p>
+<p class="footer">A.S.T. Arrieta Soluciones Tecnológicas &nbsp;·&nbsp; Datos guardados automáticamente en este dispositivo</p>
 
 <script src="script.js"></script>
 </body>
