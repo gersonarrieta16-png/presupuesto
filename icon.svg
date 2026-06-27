@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fondo redondeado navy -->
+  <rect width="512" height="512" rx="96" fill="#1e3a5f"/>
+  <!-- Casa: techo -->
+  <polygon points="256,80 420,220 420,420 92,420 92,220" fill="#3b82f6"/>
+  <!-- Puerta -->
+  <rect x="200" y="290" width="112" height="130" rx="56" fill="#1e40af"/>
+  <!-- Ventana izquierda -->
+  <rect x="120" y="270" width="60" height="60" rx="8" fill="#93c5fd"/>
+  <!-- Ventana derecha -->
+  <rect x="332" y="270" width="60" height="60" rx="8" fill="#93c5fd"/>
+  <!-- Chimenea -->
+  <rect x="330" y="130" width="40" height="90" rx="6" fill="#1d4ed8"/>
+  <!-- Manija puerta -->
+  <circle cx="228" cy="360" r="8" fill="#bfdbfe"/>
+</svg>
