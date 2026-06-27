@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Finanzas del Hogar · Arrieta · Reyes</title>
+<meta name="theme-color" content="#1e3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Finanzas">
+<meta name="description" content="Matriz financiera y billetera personal Arrieta · Reyes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#1e293b;min-height:100dvh}
@@ -111,7 +118,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#1e
 
 // ── CONFIGURACION ────────────────────────────────────────────────────
 // Pega aqui la URL de tu GAS web app despues de desplegarlo
-const API_URL = 'https://script.google.com/macros/s/AKfycbzbrakCIFL2aCmd2JPuVheHm3uv_NUmt6MkUgOD92tsLO2BLw4EUlM0vJSaUzDKLVun/exec';   // Ej: 'https://script.google.com/macros/s/XXX/exec'
+const API_URL = '';   // Ej: 'https://script.google.com/macros/s/XXX/exec'
 
 const SK   = 'mff_v4';
 const UK   = 'mff_usuario';
@@ -457,10 +464,10 @@ function renderModal(){
   return'<div class="overlay" onclick="ovClick(event)"><div class="modal" id="mbox">'+
     '<div class="modal-hdr"><span class="modal-ttl">'+(isIng?'Nuevo ingreso':'Nuevo gasto / aporte')+'</span>'+
     '<button class="btn-x" onclick="closeModal()">&#215;</button></div>'+
-    '<div class="f-grp"><label class="f-lbl">Monto (COP)</label><input class="f-inp big" type="number" placeholder="0" id="fm" value="'+esc(form.monto||'')+'" oninput="form.monto=this.value"></div>'+
-    '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="form.descripcion=this.value"></div>'+
-    '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="form.categoria=this.value">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
-    '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="form.fecha=this.value"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Monto (COP)</label><input class="f-inp big" type="number" placeholder="0" id="fm" value="'+esc(form.monto||'')+'" oninput="setF(\'monto\',this.value)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="setF(\'descripcion\',this.value)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="setF(\'categoria\',this.value)">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+    '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="setF(\'fecha\',this.value)"></div>'+
     dests+
     '<button class="btn-save" style="background:'+(isIng?'#059669':uc())+'" onclick="saveModal()">Guardar</button>'+
   '</div></div>';
@@ -472,6 +479,10 @@ function txList(items,sign,bg,tx){return'<div class="tx-list">'+items.map(functi
 function empt(ico,txt){return'<div class="empty"><div class="empty-ico">'+ico+'</div>'+txt+'</div>';}
 
 // ── EVENTS ────────────────────────────────────────────────────────────
+// setF: helper para actualizar form desde handlers inline
+// (form es propiedad reservada de inputs HTML, no se puede usar directo en oninput)
+function setF(k,v){if(form)form[k]=v;}
+
 function elegirU(u){usuario=u;localStorage.setItem(UK,u);view='matriz';render();if(API_URL)cargarDesdeAPI();}
 function cambiarU(){if(confirm('Cambiar de usuario?')){usuario=null;localStorage.removeItem(UK);render();}}
 function setView(v){view=v;render();}
@@ -549,6 +560,50 @@ cargarLocal();
 render();
 if(usuario&&API_URL)cargarDesdeAPI();
 else setSyncDot(API_URL?'loading':'local');
+</script>
+
+<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1e3a5f;color:white;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.25)">
+  <span style="font-size:30px;flex-shrink:0">&#127968;</span>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:13px;font-weight:700">Finanzas del Hogar</div>
+    <div style="font-size:11px;opacity:.7;margin-top:1px" id="pwa-sub">Instala la app para acceso rapido sin internet</div>
+  </div>
+  <button id="pwa-btn" onclick="pwaInstalar()" style="background:#3b82f6;border:none;color:white;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">Instalar</button>
+  <button onclick="document.getElementById('pwa-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:22px;padding:2px 4px;line-height:1;flex-shrink:0">x</button>
+</div>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(e){console.warn('SW:',e);});
+  });
+}
+var _pwa=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();_pwa=e;
+  document.getElementById('pwa-banner').style.display='flex';
+});
+window.addEventListener('appinstalled',function(){
+  document.getElementById('pwa-banner').style.display='none';_pwa=null;
+});
+function pwaInstalar(){
+  if(_pwa){
+    _pwa.prompt();
+    _pwa.userChoice.then(function(r){
+      if(r.outcome==='accepted')document.getElementById('pwa-banner').style.display='none';
+      _pwa=null;
+    });
+  } else {
+    alert('En iPhone/Safari:\n1. Toca el boton Compartir (cuadro con flecha arriba)\n2. Toca "Anadir a pantalla de inicio"\n3. Confirma con "Anadir"');
+  }
+}
+var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+if(isIOS&&!isStandalone){
+  document.getElementById('pwa-banner').style.display='flex';
+  document.getElementById('pwa-sub').textContent='Toca Compartir y luego Anadir a pantalla de inicio';
+  document.getElementById('pwa-btn').textContent='Ver como';
+}
 </script>
 </body>
 </html>
