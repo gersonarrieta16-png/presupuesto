@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Finanzas del Hogar · Arrieta · Reyes</title>
 <meta name="theme-color" content="#1e3a5f">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Finanzas">
@@ -257,16 +258,11 @@ function totMatriz(){
 }
 function calcU(uid){
   var ud=st[uid];
-  var ing    = ud.ingresos.reduce(function(s,i){return s+i.monto;},0);
-  var gpReal = ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro!=='presupuesto';}).reduce(function(s,g){return s+g.monto;},0);
-  var gpPres = ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro==='presupuesto';}).reduce(function(s,g){return s+g.monto;},0);
-  var apts   = st.fondo.filter(function(m){return m.tipo==='aporte'&&m.user===uid;}).reduce(function(s,m){return s+m.monto;},0);
-  return{
-    ing:ing, gpReal:gpReal, gpPres:gpPres,
-    gp:gpReal+gpPres, apts:apts,
-    saldo:ing-gpReal-apts,
-    saldoPres:ing-gpReal-gpPres-apts
-  };
+  var ing    =ud.ingresos.reduce(function(s,i){return s+i.monto;},0);
+  var gpReal =ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro!=='presupuesto';}).reduce(function(s,g){return s+g.monto;},0);
+  var gpPres =ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro==='presupuesto';}).reduce(function(s,g){return s+g.monto;},0);
+  var apts   =st.fondo.filter(function(m){return m.tipo==='aporte'&&m.user===uid;}).reduce(function(s,m){return s+m.monto;},0);
+  return{ing:ing,gpReal:gpReal,gpPres:gpPres,gp:gpReal+gpPres,apts:apts,saldo:ing-gpReal-apts,saldoPres:ing-gpReal-gpPres-apts};
 }
 function calcFondo(){
   var aps=st.fondo.filter(function(m){return m.tipo==='aporte';}).reduce(function(s,m){return s+m.monto;},0);
@@ -280,55 +276,36 @@ function calcFondo(){
 // ── RENDER ───────────────────────────────────────────────────────────
 var APP=document.getElementById('app');
 
-function renderModal(){
-  var isIng=modal==='ingreso',cats=isIng?I_CATS:G_CATS;
-  var dests='',tipoToggle='',filasSel='';
-  if(!isIng){
-    var opts=[
-      {id:'personal',ico:'👛',lbl:'De mi bolsillo',sub:'Sale de mis ingresos personales'},
-      {id:'aporte',ico:'🐷',lbl:'Aportar al Fondo del Hogar',sub:'Transfiero plata de mis ingresos al fondo'},
-      {id:'fondo',ico:'🏠',lbl:'Pagar del Fondo del Hogar',sub:'Gasto compartido, sale del fondo'},
-    ];
-    dests='<div class="f-grp"><label class="f-lbl">De donde sale?</label><div class="dest-opts">'+
-      opts.map(function(o){var sel=form.dest===o.id;
-        return'<button class="dest-opt'+(sel?' on':'')+'" onclick="setDest(\''+o.id+'\')" type="button">'+
-          '<div class="dest-ico">'+o.ico+'</div>'+
-          '<div><div class="dest-lbl">'+o.lbl+'</div><div class="dest-sub">'+o.sub+'</div></div>'+
-          (sel?'<span class="dest-chk">&#10003;</span>':'')+
-        '</button>';
-      }).join('')+
-    '</div></div>';
-
-    tipoToggle='<div class="f-grp"><label class="f-lbl">Tipo de registro</label>'+
-      '<div style="display:flex;gap:8px">'+
-        '<button onclick="setTipo(\'real\')" type="button" style="flex:1;padding:9px;border-radius:8px;border:2px solid '+(form.registro==='real'?uc():'#e2e8f0')+';background:'+(form.registro==='real'?'#eff6ff':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(form.registro==='real'?'700':'400')+'">&#128176; Gasto real</button>'+
-        '<button onclick="setTipo(\'presupuesto\')" type="button" style="flex:1;padding:9px;border-radius:8px;border:2px solid '+(form.registro==='presupuesto'?'#f97316':'#e2e8f0')+';background:'+(form.registro==='presupuesto'?'#fff7ed':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(form.registro==='presupuesto'?'700':'400')+'">&#128203; Presupuestado</button>'+
+function render(){
+  if(!usuario){renderBienvenida();return;}
+  document.documentElement.style.setProperty('--uc',uc());
+  var my=calcU(usuario);
+  APP.innerHTML=
+    '<div class="sticky-top">'+
+      '<div class="hdr" style="background:'+uc()+'">'+
+        '<div class="hdr-top">'+
+          '<span class="hdr-logo">🏠 Finanzas del Hogar</span>'+
+          '<div class="hdr-right">'+
+            '<span class="sync-dot" id="sync-dot" onclick="cargarDesdeAPI()"></span>'+
+            '<button class="btn-cambiar" onclick="cambiarU()">&#8644; cambiar</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="hdr-lbl">'+uname(usuario)+' &bull; saldo real disponible</div>'+
+        '<div class="hdr-saldo">'+cop(my.saldo)+'</div>'+
+        '<div class="hdr-detail">Tras presupuesto: <strong>'+cop(my.saldoPres)+'</strong>&nbsp;&middot;&nbsp;Presupuestado: '+cop(my.gpPres)+'</div>'+
       '</div>'+
-      '<div style="font-size:11px;color:#64748b;margin-top:5px">'+(form.registro==='presupuesto'?'Se reserva del saldo pero no se marca como pagado aun.':'Se descuenta del saldo real inmediatamente.')+'</div>'+
-    '</div>';
-
-    if(form.dest==='fondo'){
-      filasSel='<div class="f-grp"><label class="f-lbl">Item de la Matriz (autocompleta)</label>'+
-        '<select class="f-inp" onchange="selFila(this.value)">'+
-        '<option value="">-- Elegir item --</option>'+
-        st.filas.map(function(f){
-          return'<option value="'+f.id+'"'+(form.filaId===f.id?' selected':'')+'>'+
-            esc(f.rubro)+' ('+cop(f.monto)+')</option>';
-        }).join('')+
-        '</select></div>';
-    }
-  }
-  return'<div class="overlay" onclick="ovClick(event)"><div class="modal" id="mbox">'+
-    '<div class="modal-hdr"><span class="modal-ttl">'+(isIng?'Nuevo ingreso':'Nuevo gasto / aporte')+'</span>'+
-    '<button class="btn-x" onclick="closeModal()">&#215;</button></div>'+
-    '<div class="f-grp"><label class="f-lbl">Monto (COP)</label><input class="f-inp big" type="number" placeholder="0" id="fm" value="'+esc(form.monto||'')+'" oninput="setF(\'monto\',this.value)"></div>'+
-    '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="setF(\'descripcion\',this.value)"></div>'+
-    '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="setF(\'categoria\',this.value)">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
-    '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="setF(\'fecha\',this.value)"></div>'+
-    dests+tipoToggle+filasSel+
-    '<button class="btn-save" style="background:'+(isIng?'#059669':uc())+'" onclick="saveModal()">Guardar</button>'+
-  '</div></div>';
+      '<div class="tabs">'+
+        mkTab('matriz',  '📊','Matriz'    )+
+        mkTab('billetera','👛','Billetera' )+
+        mkTab('fondo',   '🐷','Fondo'     )+
+        mkTab('resumen', '📈','Resumen'   )+
+      '</div>'+
+    '</div>'+
+    '<div class="content">'+viewContent()+'</div>'+
+    (modal?renderModal():'');
+  setSyncDot(syncStatus);
 }
+
 function mkTab(id,ico,lbl){
   return '<button class="tab'+(view===id?' active':'')+'" onclick="setView(\''+id+'\')"><div class="tab-ico">'+ico+'</div>'+lbl+'</button>';
 }
@@ -408,8 +385,7 @@ function vBilletera(){
   st.fondo.filter(function(m){return m.user===usuario;}).forEach(function(m){recent.push(Object.assign({},m,{_t:m.tipo==='aporte'?'apt':'fgasto'}));});
   recent.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);});recent=recent.slice(0,7);
   var recHtml=recent.length?'<div class="tx-list">'+recent.map(function(item){
-    var isIng=item._t==='ing',isApt=item._t==='apt';
-    var isPres=item.registro==='presupuesto';
+    var isIng=item._t==='ing',isApt=item._t==='apt',isPres=item.registro==='presupuesto';
     var bg=isIng?'#ecfdf5':isApt?'#fffbeb':isPres?'#fff7ed':'#fef2f2';
     var tx=isIng?'#065f46':isApt?'#78350f':isPres?'#9a3412':'#7f1d1d';
     var sub=isApt?'Fondo del Hogar':item._t==='fgasto'?'Del Fondo':item.categoria;
@@ -426,6 +402,7 @@ function vBilletera(){
     '<div class="sec mt">Presupuestados (pendientes de pagar)</div>'+(myGtsPres.length?txList(myGtsPres,'-','#fff7ed','#9a3412'):empt('📋','Sin gastos presupuestados.'))+
     '<div class="sec mt">Aportes al Fondo</div>'+(myApts.length?txList(myApts,'-','#fffbeb','#78350f'):empt('🐷','Sin aportes al fondo aun.'));
 }
+
 // ── VIEW: FONDO ───────────────────────────────────────────────────────
 function vFondo(){
   var f=calcFondo();
@@ -473,7 +450,7 @@ function vResumen(){
 // ── MODAL ─────────────────────────────────────────────────────────────
 function renderModal(){
   var isIng=modal==='ingreso',cats=isIng?I_CATS:G_CATS;
-  var dests='',filasSel='';
+  var dests='',tipoToggle='',filasSel='';
   if(!isIng){
     var opts=[
       {id:'personal',ico:'👛',lbl:'De mi bolsillo',sub:'Sale de mis ingresos personales'},
@@ -489,7 +466,13 @@ function renderModal(){
         '</button>';
       }).join('')+
     '</div></div>';
-
+    tipoToggle='<div class="f-grp"><label class="f-lbl">Tipo de registro</label>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button onclick="setTipo(\'real\')" type="button" style="flex:1;padding:9px;border-radius:8px;border:2px solid '+(form.registro==='real'?uc():'#e2e8f0')+';background:'+(form.registro==='real'?'#eff6ff':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(form.registro==='real'?'700':'400')+'">&#128176; Gasto real</button>'+
+        '<button onclick="setTipo(\'presupuesto\')" type="button" style="flex:1;padding:9px;border-radius:8px;border:2px solid '+(form.registro==='presupuesto'?'#f97316':'#e2e8f0')+';background:'+(form.registro==='presupuesto'?'#fff7ed':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(form.registro==='presupuesto'?'700':'400')+'">&#128203; Presupuestado</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#64748b;margin-top:5px">'+(form.registro==='presupuesto'?'Se reserva del saldo pero aun no lo has pagado.':'Se descuenta del saldo real inmediatamente.')+'</div>'+
+    '</div>';
     if(form.dest==='fondo'){
       filasSel='<div class="f-grp"><label class="f-lbl">Item de la Matriz (autocompleta)</label>'+
         '<select class="f-inp" onchange="selFila(this.value)">'+
@@ -508,7 +491,7 @@ function renderModal(){
     '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="setF(\'descripcion\',this.value)"></div>'+
     '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="setF(\'categoria\',this.value)">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
     '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="setF(\'fecha\',this.value)"></div>'+
-    dests+filasSel+
+    dests+tipoToggle+filasSel+
     '<button class="btn-save" style="background:'+(isIng?'#059669':uc())+'" onclick="saveModal()">Guardar</button>'+
   '</div></div>';
 }
@@ -526,17 +509,12 @@ function setF(k,v){if(form)form[k]=v;}
 function elegirU(u){usuario=u;localStorage.setItem(UK,u);view='matriz';render();if(API_URL)cargarDesdeAPI();}
 function cambiarU(){if(confirm('Cambiar de usuario?')){usuario=null;localStorage.removeItem(UK);render();}}
 function setView(v){view=v;render();}
-function openModal(type,dest){
-  modal=type;
-  form={monto:'',descripcion:'',fecha:todayStr(),categoria:type==='ingreso'?'Salario':'Alimentacion',dest:dest||'personal',filaId:'',registro:'real'};
-  render();
-  setTimeout(function(){var el=document.getElementById('fm');if(el)el.focus();},60);
-}
+function openModal(type,dest){modal=type;form={monto:'',descripcion:'',fecha:todayStr(),categoria:type==='ingreso'?'Salario':'Alimentacion',dest:dest||'personal',filaId:'',registro:'real'};render();setTimeout(function(){var el=document.getElementById('fm');if(el)el.focus();},60);}
 function setTipo(t){form.registro=t;render();}
-function setDest(d){form.dest=d;form.registro='real';render();}
 function closeModal(){modal=null;render();}
 function ovClick(e){if(e.target.classList.contains('overlay'))closeModal();}
-function setDest(d){form.dest=d;render();}
+function setDest(d){form.dest=d;form.registro='real';form.filaId='';render();}
+
 function selFila(id){
   if(!id)return;
   var f=st.filas.find(function(f){return f.id===+id;});
@@ -544,10 +522,8 @@ function selFila(id){
   form.filaId=+id;
   form.descripcion=f.rubro;
   form.monto=f.monto;
-  form.categoria='Vivienda'; // categoria generica para gastos de hogar
   render();
 }
-
 function saveModal(){
   var m=parseFloat(form.monto);
   if(!m||m<=0){alert('Ingresa un monto valido.');return;}
@@ -631,9 +607,9 @@ else setSyncDot(API_URL?'loading':'local');
 </div>
 
 <script>
-if('serviceWorker' in navigator){
+if('serviceWorker' in navigator && location.protocol === 'https:'){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('./sw.js').catch(function(e){console.warn('SW:',e);});
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
   });
 }
 var _pwa=null;
