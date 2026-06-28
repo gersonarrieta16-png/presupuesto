@@ -484,10 +484,13 @@ function renderModal(){
       '</div>'+
       '<div style="font-size:11px;color:#64748b;margin-top:5px">'+(form.registro==='presupuesto'?'Se reserva del saldo pero aun no lo has pagado.':'Se descuenta del saldo real inmediatamente.')+'</div>'+
     '</div>';
-    if(form.dest==='fondo'){
-      filasSel='<div class="f-grp"><label class="f-lbl">Item de la Matriz (autocompleta)</label>'+
+    if(form.dest==='personal'||form.dest==='fondo'){
+      var filaLbl=form.dest==='personal'
+        ?'Gasto del hogar que estas pagando (opcional)'
+        :'Item del Fondo que vas a pagar';
+      filasSel='<div class="f-grp"><label class="f-lbl">'+filaLbl+'</label>'+
         '<select class="f-inp" onchange="selFila(this.value)">'+
-        '<option value="">-- Elegir item --</option>'+
+        '<option value="">-- Elegir item de la Matriz --</option>'+
         st.filas.map(function(f){
           return'<option value="'+f.id+'"'+(form.filaId===f.id?' selected':'')+'>'+
             esc(f.rubro)+' ('+cop(f.monto)+')</option>';
@@ -532,18 +535,19 @@ function selFila(id){
   if(!f)return;
   form.filaId=+id;
   form.descripcion=f.rubro;
+  // Calcular la parte que le toca al usuario según % de la Matriz
   var pct=usuario==='gerson'?f.pG:(100-f.pG);
   form.monto=Math.round(f.monto*pct/100);
-  form.dest='personal';
-  form.registro='real';
   // Categoría automática según el rubro
-  var rubro=f.rubro.toLowerCase();
-  if(rubro.indexOf('alimenta')>=0||rubro.indexOf('mercado')>=0)form.categoria='Alimentacion';
-  else if(rubro.indexOf('transporte')>=0||rubro.indexOf('bus')>=0)form.categoria='Transporte';
-  else if(rubro.indexOf('arriendo')>=0||rubro.indexOf('casa')>=0||rubro.indexOf('internet')>=0)form.categoria='Servicios';
-  else if(rubro.indexOf('universidad')>=0||rubro.indexOf('refuerzo')>=0||rubro.indexOf('colegio')>=0)form.categoria='Educacion';
-  else if(rubro.indexOf('cuidadora')>=0||rubro.indexOf('salud')>=0)form.categoria='Salud';
+  var r=f.rubro.toLowerCase();
+  if(r.indexOf('alimenta')>=0||r.indexOf('mercado')>=0)form.categoria='Alimentacion';
+  else if(r.indexOf('transporte')>=0||r.indexOf('bus')>=0)form.categoria='Transporte';
+  else if(r.indexOf('arriendo')>=0||r.indexOf('casa')>=0||r.indexOf('internet')>=0)form.categoria='Servicios';
+  else if(r.indexOf('universidad')>=0||r.indexOf('refuerzo')>=0||r.indexOf('colegio')>=0)form.categoria='Educacion';
+  else if(r.indexOf('cuidadora')>=0||r.indexOf('salud')>=0)form.categoria='Salud';
   else form.categoria='Otro';
+  // NO cambia form.dest — el usuario ya eligió de dónde sale la plata
+  form.registro='real';
   render();
 }
 function saveModal(){
