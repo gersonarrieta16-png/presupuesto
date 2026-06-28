@@ -228,7 +228,12 @@ function cargarDesdeAPI(){
     .then(function(r){return r.json();})
     .then(function(data){
       if(!data.ok)throw new Error(data.error||'Error API');
-      if(data.filas&&data.filas.length)st.filas=data.filas;
+      if(data.filas&&data.filas.length){
+        st.filas=data.filas;
+      } else if(st.filas.length){
+        // Sheet tiene Matriz vacía pero localStorage tiene datos → subir al Sheet
+        guardarMatrizAPI();
+      }
       if(data.gerson) st.gerson =data.gerson;
       if(data.saudith)st.saudith=data.saudith;
       if(data.fondo)  st.fondo  =data.fondo;
@@ -522,7 +527,11 @@ function selFila(id){
   if(!f)return;
   form.filaId=+id;
   form.descripcion=f.rubro;
-  form.monto=f.monto;
+  // Calcular la parte que le toca al usuario según el % de la Matriz
+  var pct=usuario==='gerson'?f.pG:(100-f.pG);
+  form.monto=Math.round(f.monto*pct/100);
+  form.dest='personal'; // pago de mi parte personal
+  form.registro='real';
   render();
 }
 function saveModal(){
@@ -548,6 +557,13 @@ function saveModal(){
   }
   guardarLocal();
   if(movAPI)postAPI('addMovimiento',{mov:movAPI});
+  // Si viene de un ítem de la Matriz → marcarlo como Pagado
+  if(form.filaId){
+    st.filas=st.filas.map(function(f){
+      return f.id===form.filaId?Object.assign({},f,{estado:'Pagado'}):f;
+    });
+    guardarMatrizAPI();
+  }
   modal=null;render();
 }
 
