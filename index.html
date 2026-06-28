@@ -158,10 +158,13 @@ let modal      = null;
 let form       = {};
 let syncStatus = API_URL ? 'loading' : 'local';
 let matrizTimer = null;
+var modalProy = false;
+var formProy = {};
 
 let st = {
   mes:hoy.getMonth(), ano:hoy.getFullYear(), filas:[],
   gerson:{ingresos:[],gastos:[]}, saudith:{ingresos:[],gastos:[]}, fondo:[],
+  proyectos:[], proyectoAportes:[],
 };
 
 // ── HELPERS ──────────────────────────────────────────────────────────
@@ -184,7 +187,7 @@ function other(){return usuario==='gerson'?'saudith':'gerson';}
 
 // ── PERSISTENCIA LOCAL ───────────────────────────────────────────────
 function guardarLocal(){
-  try{localStorage.setItem(SK,JSON.stringify({mes:st.mes,ano:st.ano,filas:st.filas,gerson:st.gerson,saudith:st.saudith,fondo:st.fondo}));}
+  try{localStorage.setItem(SK,JSON.stringify({mes:st.mes,ano:st.ano,filas:st.filas,gerson:st.gerson,saudith:st.saudith,fondo:st.fondo,proyectos:st.proyectos,proyectoAportes:st.proyectoAportes}));}
   catch(e){console.warn('storage:',e);}
 }
 function cargarLocal(){
@@ -198,6 +201,8 @@ function cargarLocal(){
     st.gerson ={ingresos:(g.gerson &&g.gerson.ingresos)||[],gastos:(g.gerson &&g.gerson.gastos)||[]};
     st.saudith={ingresos:(g.saudith&&g.saudith.ingresos)||[],gastos:(g.saudith&&g.saudith.gastos)||[]};
     st.fondo  =g.fondo||[];
+    st.proyectos=g.proyectos||[];
+    st.proyectoAportes=g.proyectoAportes||[];
   }catch(e){
     st.filas=FILAS_BASE.map(function(f){return Object.assign({},f);});
   }
@@ -242,6 +247,8 @@ function cargarDesdeAPI(){
       if(data.gerson) st.gerson =data.gerson;
       if(data.saudith)st.saudith=data.saudith;
       if(data.fondo)  st.fondo  =data.fondo;
+      if(data.proyectos)      st.proyectos=data.proyectos;
+      if(data.proyectoAportes) st.proyectoAportes=data.proyectoAportes;
       guardarLocal();
       setSyncDot('ok');
       render();
@@ -273,7 +280,8 @@ function calcU(uid){
   var gpReal =ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro!=='presupuesto';}).reduce(function(s,g){return s+g.monto;},0);
   var gpPres =ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro==='presupuesto';}).reduce(function(s,g){return s+g.monto;},0);
   var apts   =st.fondo.filter(function(m){return m.tipo==='aporte'&&m.user===uid;}).reduce(function(s,m){return s+m.monto;},0);
-  return{ing:ing,gpReal:gpReal,gpPres:gpPres,gp:gpReal+gpPres,apts:apts,saldo:ing-gpReal-apts,saldoPres:ing-gpReal-gpPres-apts};
+  var proyApts=st.proyectoAportes.filter(function(a){return a.user===uid;}).reduce(function(s,a){return s+a.monto;},0);
+  return{ing:ing,gpReal:gpReal,gpPres:gpPres,gp:gpReal+gpPres,apts:apts,proyApts:proyApts,saldo:ing-gpReal-apts-proyApts,saldoPres:ing-gpReal-gpPres-apts-proyApts};
 }
 function calcFondo(){
   var aps=st.fondo.filter(function(m){return m.tipo==='aporte';}).reduce(function(s,m){return s+m.monto;},0);
@@ -310,10 +318,12 @@ function render(){
         mkTab('billetera','👛','Billetera' )+
         mkTab('fondo',   '🐷','Fondo'     )+
         mkTab('resumen', '📈','Resumen'   )+
+        mkTab('proyectos','🎯','Proyectos' )+
       '</div>'+
     '</div>'+
     '<div class="content">'+viewContent()+'</div>'+
-    (modal?renderModal():'');
+    (modal?renderModal():'')+
+    (modalProy?renderModalProyecto():'');
   setSyncDot(syncStatus);
 }
 
@@ -325,6 +335,7 @@ function viewContent(){
   if(view==='billetera') return vBilletera();
   if(view==='fondo')     return vFondo();
   if(view==='resumen')   return vResumen();
+  if(view==='proyectos') return vProyectos();
   return '';
 }
 
@@ -350,4 +361,475 @@ function vMatriz(){
   var cards=
     '<div class="grid2">'+
       '<div class="crd c-full"><div class="crd-lbl">Total pasivos &middot; '+MESES[st.mes]+' '+st.ano+'</div><div class="crd-val">'+cop(tot.monto)+'</div><div class="crd-sub">'+pag+' de '+total+' items pagados</div><div class="crd-prog"><div class="crd-fill" style="width:'+prog+'%"></div></div></div>'+
-      '<div class="crd c-blue"><div class="cr
+      '<div class="crd c-blue"><div class="crd-lbl">Aporte Gerson</div><div class="crd-val">'+cop(tot.gerson)+'</div><div class="crd-sub">'+pGp+'% del total</div></div>'+
+      '<div class="crd c-purple"><div class="crd-lbl">Aporte Saudith</div><div class="crd-val">'+cop(tot.saudith)+'</div><div class="crd-sub">'+pSp+'% del total</div></div>'+
+    '</div>';
+  var sels='<div class="sel-wrap"><select onchange="st.mes=+this.value;guardarLocal()">'+MESES.map(function(m,i){return'<option value="'+i+'"'+(i===st.mes?' selected':'')+'>'+m+'</option>';}).join('')+'</select><select onchange="st.ano=+this.value;guardarLocal()">'+ANOS.map(function(a){return'<option'+(a===st.ano?' selected':'')+'>'+a+'</option>';}).join('')+'</select></div>';
+  var acts='<div class="tbl-acts"><button class="btn-tbl" onclick="addFila()">+ Agregar item</button><button class="btn-tbl" onclick="window.print()">Imprimir</button><button class="btn-tbl danger" onclick="resetMatriz()">Reiniciar</button></div>';
+  var rows=st.filas.map(function(f){
+    var pS2=100-f.pG,aG=+f.monto*f.pG/100,aS=+f.monto*pS2/100;
+    return'<tr>'+
+      '<td><input type="text" class="inp-r" value="'+esc(f.rubro)+'" data-id="'+f.id+'" data-campo="rubro" onfocus="this.select()" onblur="onTxt(this)" onkeydown="if(event.key===\'Enter\')this.blur()"></td>'+
+      '<td><input type="number" class="inp-m" value="'+f.monto+'" min="0" step="1000" data-id="'+f.id+'" data-campo="monto" onchange="onNum(this)"></td>'+
+      '<td><input type="text" class="inp-v" value="'+esc(f.vence)+'" data-id="'+f.id+'" data-campo="vence" onfocus="this.select()" onblur="onTxt(this)" onkeydown="if(event.key===\'Enter\')this.blur()"></td>'+
+      '<td><div class="pct-w"><input type="number" class="inp-p" value="'+f.pG+'" min="0" max="100" step="5" data-id="'+f.id+'" data-campo="pG" onchange="onPct(this)"><span class="pct-s">%G</span></div></td>'+
+      '<td style="color:#64748b;font-size:11px">'+pS2+'%</td>'+
+      '<td style="color:#1e40af;font-weight:700;font-size:11px">'+cop(aG)+'</td>'+
+      '<td style="color:#5b21b6;font-weight:700;font-size:11px">'+cop(aS)+'</td>'+
+      '<td><select class="sel-est '+f.estado.toLowerCase()+'" data-id="'+f.id+'" onchange="onEst(this)">'+
+        '<option'+(f.estado==='Pendiente'?' selected':'')+' value="Pendiente">Pendiente</option>'+
+        '<option'+(f.estado==='Pagado'?' selected':'')+' value="Pagado">Pagado</option>'+
+        '<option'+(f.estado==='Gratuidad'?' selected':'')+' value="Gratuidad">Gratuidad</option>'+
+      '</select></td>'+
+      '<td><button class="btn-del" data-id="'+f.id+'" onclick="delFila(this)">x</button></td>'+
+    '</tr>';
+  }).join('');
+  var tf='<tr><td style="color:#64748b">TOTALES</td><td>'+cop(tot.monto)+'</td><td colspan="3" style="color:#94a3b8">--</td><td style="color:#1e40af">'+cop(tot.gerson)+'</td><td style="color:#5b21b6">'+cop(tot.saudith)+'</td><td colspan="2" style="color:#94a3b8">--</td></tr>';
+  return cards+sels+acts+'<div class="tbl-wrap"><table><thead><tr><th>Rubro</th><th>Monto</th><th>Vence</th><th>%G</th><th>%S</th><th style="color:#1e40af">Gerson</th><th style="color:#5b21b6">Saudith</th><th>Estado</th><th></th></tr></thead><tbody>'+rows+'</tbody><tfoot>'+tf+'</tfoot></table></div>';
+}
+
+// ── VIEW: BILLETERA ───────────────────────────────────────────────────
+function vBilletera(){
+  var my=calcU(usuario),oth=calcU(other()),f=calcFondo();
+  var ob=other()==='gerson'?'#eff6ff':'#f5f3ff',ot=other()==='gerson'?'#1e40af':'#5b21b6';
+  var cards='<div class="grid2">'+
+    crd2('Ingresos',cop(my.ing),'#ecfdf5','#065f46')+
+    crd2('Gastos reales',cop(my.gpReal),'#fef2f2','#7f1d1d')+
+    crd2('Presupuestado',cop(my.gpPres),'#fff7ed','#9a3412')+
+    crd2('Saldo tras presupuesto',cop(my.saldoPres),my.saldoPres>=0?'#ecfdf5':'#fef2f2',my.saldoPres>=0?'#065f46':'#7f1d1d')+
+  '</div>';
+  var banner='<div class="fondo-banner" onclick="setView(\'fondo\')"><div><div class="fondo-lbl">🐷 Fondo del Hogar</div><div class="fondo-val">'+cop(f.bal)+'</div><div class="fondo-sub">'+uname(usuario)+': '+cop(f.myAps)+' &middot; '+uname(other())+': '+cop(f.othAps)+'</div></div><span style="color:#78400e;font-size:18px">&#8250;</span></div>';
+  var btns='<div class="btns-row"><button class="btn-a bg-green" onclick="openModal(\'ingreso\')">+ Ingreso</button><button class="btn-a" style="background:'+uc()+'" onclick="openModal(\'gasto\')">+ Gasto</button></div>';
+  var recent=[];
+  var ud=st[usuario];
+  ud.ingresos.forEach(function(i){recent.push(Object.assign({},i,{_t:'ing'}));});
+  ud.gastos.forEach(function(g){recent.push(Object.assign({},g,{_t:'gasto'}));});
+  st.fondo.filter(function(m){return m.user===usuario;}).forEach(function(m){recent.push(Object.assign({},m,{_t:m.tipo==='aporte'?'apt':'fgasto'}));});
+  recent.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);});recent=recent.slice(0,7);
+  var recHtml=recent.length?'<div class="tx-list">'+recent.map(function(item){
+    var isIng=item._t==='ing',isApt=item._t==='apt',isPres=item.registro==='presupuesto';
+    var bg=isIng?'#ecfdf5':isApt?'#fffbeb':isPres?'#fff7ed':'#fef2f2';
+    var tx=isIng?'#065f46':isApt?'#78350f':isPres?'#9a3412':'#7f1d1d';
+    var sub=isApt?'Fondo del Hogar':item._t==='fgasto'?'Del Fondo':item.categoria;
+    var ico=isApt?'🐷':item._t==='fgasto'?'🏠':emo(item.categoria);
+    var badge=isPres?'<span style="font-size:9px;background:#fed7aa;color:#9a3412;border-radius:4px;padding:1px 5px;margin-left:4px">PRES</span>':'';
+    return'<div class="tx-row"><div class="tx-ico" style="background:'+bg+'">'+ico+'</div><div class="tx-info"><div class="tx-name">'+esc(item.descripcion||item.categoria)+badge+'</div><div class="tx-meta">'+sub+' &middot; '+fmtDate(item.fecha)+'</div></div><div class="tx-amt" style="color:'+tx+'">'+(isIng?'+':'-')+cop(item.monto)+'</div></div>';
+  }).join('')+'</div>':'<div class="empty"><div class="empty-ico">👛</div>Sin movimientos aun.</div>';
+  var myGtsReal=ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro!=='presupuesto';});
+  var myGtsPres=ud.gastos.filter(function(g){return g.dest==='personal'&&g.registro==='presupuesto';});
+  var myApts=st.fondo.filter(function(m){return m.tipo==='aporte'&&m.user===usuario;});
+  return cards+banner+btns+
+    '<div class="sec">Actividad reciente</div>'+recHtml+
+    '<div class="sec mt">Gastos reales</div>'+(myGtsReal.length?txList(myGtsReal,'-','#fef2f2','#7f1d1d'):empt('💸','Sin gastos reales aun.'))+
+    '<div class="sec mt">Presupuestados (pendientes de pagar)</div>'+(myGtsPres.length?txList(myGtsPres,'-','#fff7ed','#9a3412'):empt('📋','Sin gastos presupuestados.'))+
+    '<div class="sec mt">Aportes al Fondo</div>'+(myApts.length?txList(myApts,'-','#fffbeb','#78350f'):empt('🐷','Sin aportes al fondo aun.'));
+}
+
+// ── VIEW: FONDO ───────────────────────────────────────────────────────
+function vFondo(){
+  var f=calcFondo();
+  var ub=usuario==='gerson'?'#eff6ff':'#f5f3ff',ut=usuario==='gerson'?'#1e40af':'#5b21b6';
+  var ob=other()==='gerson'?'#eff6ff':'#f5f3ff',ot=other()==='gerson'?'#1e40af':'#5b21b6';
+  var hdr='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;margin-bottom:12px">'+
+    '<div style="font-size:12px;font-weight:600;color:#78350f;margin-bottom:4px">Balance del Fondo del Hogar</div>'+
+    '<div style="font-size:28px;font-weight:700;color:#d97706;margin-bottom:8px">'+cop(f.bal)+'</div>'+
+    '<div style="font-size:11px;color:#78350f;opacity:.8;display:flex;gap:16px"><span>Aportes: '+cop(f.aps)+'</span><span>Gastos: '+cop(f.gts)+'</span></div>'+
+  '</div>'+
+  '<div class="grid2" style="margin-bottom:12px">'+
+    '<div style="background:'+ub+';border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:'+ut+';opacity:.7;margin-bottom:3px">'+uname(usuario)+' aporto</div><div style="font-weight:700;color:'+ut+';font-size:15px">'+cop(f.myAps)+'</div></div>'+
+    '<div style="background:'+ob+';border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;color:'+ot+';opacity:.7;margin-bottom:3px">'+uname(other())+' aporto</div><div style="font-weight:700;color:'+ot+';font-size:15px">'+cop(f.othAps)+'</div></div>'+
+  '</div>';
+  var movs=st.fondo.length?'<div class="tx-list">'+st.fondo.map(function(m){
+    var isApt=m.tipo==='aporte',bg=isApt?'#ecfdf5':'#fef2f2',tx=isApt?'#065f46':'#7f1d1d';
+    return'<div class="tx-row"><div class="tx-ico" style="background:'+bg+'">'+(isApt?'⬆️':emo(m.categoria))+'</div>'+
+      '<div class="tx-info"><div class="tx-name">'+esc(m.descripcion||m.categoria)+'</div>'+
+      '<div class="tx-meta">'+(isApt?'Aporte de '+uname(m.user):m.categoria)+' &middot; '+fmtDate(m.fecha)+'</div></div>'+
+      '<div class="tx-amt" style="color:'+tx+'">'+(isApt?'+':'-')+cop(m.monto)+'</div></div>';
+  }).join('')+'</div>':empt('🐷','El fondo esta vacio. Hagan un aporte para empezar.');
+  return hdr+'<button class="btn-full bg-amber" onclick="openModal(\'gasto\',\'fondo\')">+ Gasto del Fondo</button><div class="sec mt">Movimientos del fondo</div>'+movs;
+}
+
+// ── VIEW: RESUMEN ─────────────────────────────────────────────────────
+function vResumen(){
+  var tot=totMatriz(),my=calcU(usuario),oth=calcU(other()),f=calcFondo();
+  var ub=usuario==='gerson'?'#eff6ff':'#f5f3ff',ut=usuario==='gerson'?'#1e40af':'#5b21b6';
+  var ob=other()==='gerson'?'#eff6ff':'#f5f3ff',ot=other()==='gerson'?'#1e40af':'#5b21b6';
+  var mp=tot.monto>0?Math.round((usuario==='gerson'?tot.gerson:tot.saudith)/tot.monto*100):50;
+  return'<div class="sec" style="margin-top:0">Saldos personales</div>'+
+    '<div class="grid2" style="margin-bottom:12px">'+crd2(uname(usuario)+' (yo)',cop(my.saldo),ub,ut)+crd2(uname(other()),cop(oth.saldo),ob,ot)+'</div>'+
+    '<div class="sec mt">Fondo del Hogar</div>'+
+    '<div class="grid2" style="margin-bottom:12px">'+crd2('Balance',cop(f.bal),'#fffbeb','#78350f')+crd2('Total aportes',cop(f.aps),'#ecfdf5','#065f46')+'</div>'+
+    '<div class="sec mt">Mis finanzas</div>'+
+    '<div class="grid2" style="margin-bottom:12px">'+crd2('Ingresos',cop(my.ing),'#ecfdf5','#065f46')+crd2('Gastos pers.',cop(my.gp),'#fef2f2','#7f1d1d')+crd2('Al fondo',cop(my.apts),'#fffbeb','#78350f')+crd2('Saldo neto',cop(my.saldo),ub,ut)+'</div>'+
+    '<div class="sec mt">Pasivos &middot; '+MESES[st.mes]+'</div>'+
+    '<div class="grid2">'+
+      '<div class="crd c-full"><div class="crd-lbl">Total</div><div class="crd-val">'+cop(tot.monto)+'</div></div>'+
+      crd2('Mi parte ('+mp+'%)',cop(usuario==='gerson'?tot.gerson:tot.saudith),ub,ut)+
+      crd2('Parte de '+uname(other()),cop(other()==='gerson'?tot.gerson:tot.saudith),ob,ot)+
+    '</div>';
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────
+function renderModal(){
+  var isIng=modal==='ingreso',cats=isIng?I_CATS:G_CATS;
+  var dests='',tipoToggle='',filasSel='',proyectoSel='';
+  if(!isIng){
+    var opts=[
+      {id:'personal',ico:'👛',lbl:'De mi bolsillo',sub:'Sale de mis ingresos personales'},
+      {id:'aporte',ico:'🐷',lbl:'Aportar al Fondo del Hogar',sub:'Transfiero plata de mis ingresos al fondo'},
+      {id:'fondo',ico:'🏠',lbl:'Pagar del Fondo del Hogar',sub:'Gasto compartido, sale del fondo'},
+      {id:'proyecto',ico:'🎯',lbl:'Destinar a Proyecto',sub:'Ahorro personal o compartido para una meta'},
+    ];
+    dests='<div class="f-grp"><label class="f-lbl">De donde sale?</label><div class="dest-opts">'+
+      opts.map(function(o){var sel=form.dest===o.id;
+        return'<button class="dest-opt'+(sel?' on':'')+'" onclick="setDest(\''+o.id+'\')" type="button">'+
+          '<div class="dest-ico">'+o.ico+'</div>'+
+          '<div><div class="dest-lbl">'+o.lbl+'</div><div class="dest-sub">'+o.sub+'</div></div>'+
+          (sel?'<span class="dest-chk">&#10003;</span>':'')+
+        '</button>';
+      }).join('')+
+    '</div></div>';
+    tipoToggle='<div class="f-grp"><label class="f-lbl">Tipo de registro</label>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button onclick="setTipo(\'real\')" type="button" style="flex:1;padding:9px;border-radius:8px;border:2px solid '+(form.registro==='real'?uc():'#e2e8f0')+';background:'+(form.registro==='real'?'#eff6ff':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(form.registro==='real'?'700':'400')+'">&#128176; Gasto real</button>'+
+        '<button onclick="setTipo(\'presupuesto\')" type="button" style="flex:1;padding:9px;border-radius:8px;border:2px solid '+(form.registro==='presupuesto'?'#f97316':'#e2e8f0')+';background:'+(form.registro==='presupuesto'?'#fff7ed':'#fff')+';cursor:pointer;font-size:13px;font-weight:'+(form.registro==='presupuesto'?'700':'400')+'">&#128203; Presupuestado</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#64748b;margin-top:5px">'+(form.registro==='presupuesto'?'Se reserva del saldo pero aun no lo has pagado.':'Se descuenta del saldo real inmediatamente.')+'</div>'+
+    '</div>';
+    if(form.dest==='proyecto'){
+      var visibles=st.proyectos.filter(function(p){return p.tipo==='compartido'||p.owner===usuario;});
+      proyectoSel='<div class="f-grp"><label class="f-lbl">Proyecto de ahorro</label>'+
+        '<select class="f-inp" onchange="setProyecto(this.value)">'+
+        '<option value="">-- Elegir proyecto --</option>'+
+        visibles.map(function(p){return'<option value="'+p.id+'"'+(String(form.proyectoId)===String(p.id)?' selected':'')+'>'+esc(p.emoji+' '+p.nombre)+' | Meta: '+cop(p.meta)+'</option>';}).join('')+
+        '</select></div>';
+    }
+    if(form.dest==='personal'||form.dest==='fondo'){
+      var filaLbl=form.dest==='personal'
+        ?'Gasto del hogar que estas pagando de tu bolsillo (opcional)'
+        :'Item de la Matriz que vas a pagar del Fondo';
+      filasSel='<div class="f-grp"><label class="f-lbl">'+filaLbl+'</label>'+
+        '<select class="f-inp" onchange="selFila(this.value)">'+
+        '<option value="">-- Elegir item de la Matriz --</option>'+
+        st.filas.map(function(f){
+          return'<option value="'+f.id+'"'+(form.filaId===f.id?' selected':'')+'>'+
+            esc(f.rubro)+' ('+cop(f.monto)+')</option>';
+        }).join('')+
+        '</select></div>';
+    }
+  }
+  return'<div class="overlay" onclick="ovClick(event)"><div class="modal" id="mbox">'+
+    '<div class="modal-hdr"><span class="modal-ttl">'+(isIng?'Nuevo ingreso':'Nuevo gasto / aporte')+'</span>'+
+    '<button class="btn-x" onclick="closeModal()">&#215;</button></div>'+
+    '<div class="f-grp"><label class="f-lbl">Monto (COP)</label><input class="f-inp big" type="number" placeholder="0" id="fm" value="'+esc(form.monto||'')+'" oninput="setF(\'monto\',this.value)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="setF(\'descripcion\',this.value)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="setF(\'categoria\',this.value)">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+    '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="setF(\'fecha\',this.value)"></div>'+
+    dests+tipoToggle+filasSel+proyectoSel+
+    '<button class="btn-save" style="background:'+(isIng?'#059669':uc())+'" onclick="saveModal()">Guardar</button>'+
+  '</div></div>';
+}
+
+// ── MINI HELPERS ──────────────────────────────────────────────────────
+function crd2(lbl,val,bg,tx){return'<div class="crd" style="background:'+bg+'"><div class="crd-lbl" style="color:'+tx+'">'+lbl+'</div><div class="crd-val" style="color:'+tx+'">'+val+'</div></div>';}
+function txList(items,sign,bg,tx){return'<div class="tx-list">'+items.map(function(item){return'<div class="tx-row"><div class="tx-ico" style="background:'+bg+'">'+emo(item.categoria)+'</div><div class="tx-info"><div class="tx-name">'+esc(item.descripcion||item.categoria)+'</div><div class="tx-meta">'+item.categoria+' &middot; '+fmtDate(item.fecha)+'</div></div><div class="tx-amt" style="color:'+tx+'">'+sign+cop(item.monto)+'</div></div>';}).join('')+'</div>';}
+function empt(ico,txt){return'<div class="empty"><div class="empty-ico">'+ico+'</div>'+txt+'</div>';}
+
+// ── EVENTS ────────────────────────────────────────────────────────────
+// setF: helper para actualizar form desde handlers inline
+// (form es propiedad reservada de inputs HTML, no se puede usar directo en oninput)
+function setF(k,v){if(form)form[k]=v;}
+
+
+// ── HELPERS PROYECTOS (wrappers para evitar scope de let) ────────────
+function setPFld(k,v){formProy[k]=v;}
+function setPFldR(k,v){formProy[k]=v;render();}
+function setProyecto(id){form.proyectoId=id;render();}
+
+// ── VIEW: PROYECTOS ───────────────────────────────────────────────────
+function vProyectos(){
+  var todos=st.proyectos.filter(function(p){return p.tipo==='compartido'||p.owner===usuario;});
+  var crearBtn='<button class="btn-full" style="background:'+uc()+'" onclick="openModalProyecto()">+ Crear Proyecto</button>';
+  if(!todos.length) return crearBtn+empt('🎯','No tienes proyectos aun. Crea uno para empezar a ahorrar.');
+  var cards=todos.map(function(p){
+    var apts=st.proyectoAportes.filter(function(a){return a.proyectoId===String(p.id);});
+    var totalAp=apts.reduce(function(s,a){return s+a.monto;},0);
+    var pct=p.meta>0?Math.min(100,Math.round(totalAp/p.meta*100)):0;
+    var falta=Math.max(0,p.meta-totalAp);
+    var meses=p.aporteMensual>0?Math.ceil(falta/p.aporteMensual):null;
+    var color=pct>=100?'#10b981':uc();
+    return'<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px;margin-bottom:10px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+        '<div style="display:flex;align-items:center;gap:10px">'+
+          '<span style="font-size:26px">'+esc(p.emoji||'🎯')+'</span>'+
+          '<div>'+
+            '<div style="font-weight:700;font-size:15px;color:#1e293b">'+esc(p.nombre)+'</div>'+
+            '<div style="font-size:11px;color:#64748b">'+(p.tipo==='compartido'?'&#128101; Compartido':'&#128100; Personal')+'</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="font-weight:700;color:'+color+';font-size:18px">'+pct+'%</div>'+
+      '</div>'+
+      '<div style="background:#e2e8f0;border-radius:4px;height:8px;margin-bottom:8px;overflow:hidden">'+
+        '<div style="height:100%;background:'+color+';border-radius:4px;width:'+pct+'%"></div>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b">'+
+        '<span>Aportado: <strong>'+cop(totalAp)+'</strong></span>'+
+        '<span>Meta: <strong>'+cop(p.meta)+'</strong></span>'+
+      '</div>'+
+      (falta>0?
+        '<div style="font-size:11px;color:#64748b;margin-top:4px">'+
+          'Falta: '+cop(falta)+
+          (meses?' &nbsp;&middot;&nbsp; ~'+meses+' mes'+(meses!==1?'es':''):'')+ 
+          (p.fechaLimite&&p.fechaLimite!==''?' &nbsp;&middot;&nbsp; Limite: '+fmtDate(p.fechaLimite):'')+
+        '</div>'
+        :'<div style="font-size:11px;color:#10b981;font-weight:700;margin-top:4px">&#10003; Meta alcanzada!</div>'
+      )+
+    '</div>';
+  }).join('');
+  var recApts=st.proyectoAportes.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);}).slice(0,5);
+  var recHtml=recApts.length?
+    '<div class="tx-list">'+recApts.map(function(a){
+      var p=st.proyectos.find(function(p){return String(p.id)===String(a.proyectoId);})||{emoji:'🎯',nombre:'Proyecto'};
+      return'<div class="tx-row">'+
+        '<div class="tx-ico" style="background:#eff6ff;font-size:16px">'+esc(p.emoji||'🎯')+'</div>'+
+        '<div class="tx-info">'+
+          '<div class="tx-name">'+esc(p.nombre)+'</div>'+
+          '<div class="tx-meta">'+esc(a.descripcion||'Aporte')+' &middot; '+fmtDate(a.fecha)+'</div>'+
+        '</div>'+
+        '<div class="tx-amt" style="color:'+uc()+'">'+cop(a.monto)+'</div>'+
+      '</div>';
+    }).join('')+'</div>':
+    empt('💰','Sin aportes aun.');
+  return crearBtn+cards+'<div class="sec mt">Aportes recientes</div>'+recHtml;
+}
+
+// ── MODAL: CREAR PROYECTO ─────────────────────────────────────────────
+// Funciones auxiliares para evitar comillas dentro de strings JS
+function selEmoji(i){var em=['🏠','🏍','✈️','🎓','💻','📱','🚗','👶','🛒','🎯','💊','🏋','🌴','🎮','💍','🎸'];formProy.emoji=em[i];render();}
+function setPFTipoP(){formProy.tipo='personal';render();}
+function setPFTipoC(){formProy.tipo='compartido';render();}
+function setPFldDyn(el){formProy[el.getAttribute('data-pf')]=el.value;}
+
+function renderModalProyecto(){
+  var em=['🏠','🏍','✈️','🎓','💻','📱','🚗','👶','🛒','🎯','💊','🏋','🌴','🎮','💍','🎸'];
+  var emojisBtns=em.map(function(e,i){
+    var sel=formProy.emoji===e;
+    var border=sel?uc():'#e2e8f0';
+    var bg=sel?'#eff6ff':'#fff';
+    return'<button type="button" onclick="selEmoji('+i+')" style="width:38px;height:38px;border-radius:8px;border:2px solid '+border+';background:'+bg+';cursor:pointer;font-size:20px">'+e+'</button>';
+  }).join('');
+  var bP='flex:1;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;border:2px solid ';
+  var esPers=formProy.tipo==='personal';
+  var esComp=formProy.tipo==='compartido';
+  return'<div class="overlay" onclick="ovClick2(event)"><div class="modal">'+
+    '<div class="modal-hdr"><span class="modal-ttl">Nuevo Proyecto de Ahorro</span>'+
+    '<button class="btn-x" onclick="closeModalProyecto()">&#215;</button></div>'+
+    '<div class="f-grp"><label class="f-lbl">Emoji</label>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:6px">'+emojisBtns+'</div></div>'+
+    '<div class="f-grp"><label class="f-lbl">Nombre del proyecto</label>'+
+      '<input class="f-inp" type="text" placeholder="Ej: Moto, Viaje, Remodelacion..." data-pf="nombre" value="'+esc(formProy.nombre||'')+'" oninput="setPFldDyn(this)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Meta total (COP)</label>'+
+      '<input class="f-inp big" type="number" placeholder="0" data-pf="meta" value="'+esc(formProy.meta||'')+'" oninput="setPFldDyn(this)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Aporte mensual objetivo (COP)</label>'+
+      '<input class="f-inp" type="number" placeholder="0" data-pf="aporteMensual" value="'+esc(formProy.aporteMensual||'')+'" oninput="setPFldDyn(this)"></div>'+
+    '<div class="f-grp"><label class="f-lbl">Tipo</label>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button onclick="setPFTipoP()" type="button" style="'+bP+(esPers?uc():'#e2e8f0')+';background:'+(esPers?'#eff6ff':'#fff')+';font-weight:'+(esPers?'700':'400')+'">&#128100; Personal</button>'+
+        '<button onclick="setPFTipoC()" type="button" style="'+bP+(esComp?uc():'#e2e8f0')+';background:'+(esComp?'#eff6ff':'#fff')+';font-weight:'+(esComp?'700':'400')+'">&#128101; Compartido</button>'+
+      '</div></div>'+
+    '<div class="f-grp"><label class="f-lbl">Fecha limite (opcional)</label>'+
+      '<input class="f-inp" type="date" data-pf="fechaLimite" value="'+esc(formProy.fechaLimite||'')+'" oninput="setPFldDyn(this)"></div>'+
+    '<button class="btn-save" style="background:'+uc()+'" onclick="saveProyecto()">Crear Proyecto</button>'+
+  '</div></div>';
+}).join('')+
+      '</div></div>'+
+    '<div class="f-grp"><label class="f-lbl">Nombre del proyecto</label>'+
+
+
+function openModalProyecto(){
+  modal=null;
+  formProy={emoji:'🎯',nombre:'',meta:'',aporteMensual:'',tipo:'personal',fechaLimite:''};
+  modalProy=true;
+  render();
+}
+function closeModalProyecto(){modalProy=false;render();}
+function ovClick2(e){if(e.target.classList.contains('overlay'))closeModalProyecto();}
+
+function saveProyecto(){
+  if(!formProy.nombre||!formProy.meta){alert('Ingresa nombre y meta.');return;}
+  var p={
+    id:Date.now(),
+    emoji:formProy.emoji||'🎯',
+    nombre:formProy.nombre,
+    meta:parseFloat(formProy.meta)||0,
+    aporteMensual:parseFloat(formProy.aporteMensual)||0,
+    tipo:formProy.tipo||'personal',
+    owner:usuario,
+    fechaLimite:formProy.fechaLimite||'',
+  };
+  st.proyectos.unshift(p);
+  guardarLocal();
+  postAPI('addProyecto',{proyecto:p});
+  modalProy=false;
+  view='proyectos';
+  render();
+}
+
+function elegirU(u){usuario=u;localStorage.setItem(UK,u);view='matriz';render();if(API_URL)cargarDesdeAPI();}
+function cambiarU(){if(confirm('Cambiar de usuario?')){usuario=null;localStorage.removeItem(UK);render();}}
+function setView(v){view=v;render();}
+function openModal(type,dest){modalProy=false;modal=type;form={monto:'',descripcion:'',fecha:todayStr(),categoria:type==='ingreso'?'Salario':'Alimentacion',dest:dest||'personal',filaId:'',registro:'real',proyectoId:''};render();setTimeout(function(){var el=document.getElementById('fm');if(el)el.focus();},60);}
+function setTipo(t){form.registro=t;render();}
+function closeModal(){modal=null;render();}
+function ovClick(e){if(e.target.classList.contains('overlay'))closeModal();}
+function setDest(d){form.dest=d;form.registro='real';form.filaId='';render();}
+
+function selFila(id){
+  if(!id)return;
+  var f=st.filas.find(function(f){return f.id===+id;});
+  if(!f)return;
+  form.filaId=+id;
+  form.descripcion=f.rubro;
+  // Calcular la parte que le toca al usuario según % de la Matriz
+  var pct=usuario==='gerson'?f.pG:(100-f.pG);
+  form.monto=Math.round(f.monto*pct/100);
+  // Categoría automática según el rubro
+  var r=f.rubro.toLowerCase();
+  if(r.indexOf('alimenta')>=0||r.indexOf('mercado')>=0)form.categoria='Alimentacion';
+  else if(r.indexOf('transporte')>=0||r.indexOf('bus')>=0)form.categoria='Transporte';
+  else if(r.indexOf('arriendo')>=0||r.indexOf('casa')>=0||r.indexOf('internet')>=0)form.categoria='Servicios';
+  else if(r.indexOf('universidad')>=0||r.indexOf('refuerzo')>=0||r.indexOf('colegio')>=0)form.categoria='Educacion';
+  else if(r.indexOf('cuidadora')>=0||r.indexOf('salud')>=0)form.categoria='Salud';
+  else form.categoria='Otro';
+  // NO cambia form.dest — el usuario ya eligió de dónde sale la plata
+  form.registro='real';
+  render();
+}
+function saveModal(){
+  var m=parseFloat(form.monto);
+  if(!m||m<=0){alert('Ingresa un monto valido.');return;}
+  var id=Date.now();
+  var reg=form.registro||'real';
+  var base={id:id,monto:m,descripcion:form.descripcion,categoria:form.categoria,fecha:form.fecha,registro:reg};
+  var movAPI=null;
+  if(modal==='ingreso'){
+    st[usuario].ingresos.unshift(base);
+    movAPI={id:id,tipo:'ingreso',user:usuario,monto:m,descripcion:form.descripcion,categoria:form.categoria,dest:'',registro:'real',fecha:form.fecha};
+  } else if(form.dest==='personal'){
+    st[usuario].gastos.unshift(Object.assign({},base,{dest:'personal'}));
+    movAPI={id:id,tipo:'gasto_personal',user:usuario,monto:m,descripcion:form.descripcion,categoria:form.categoria,dest:'personal',registro:reg,fecha:form.fecha};
+  } else if(form.dest==='aporte'){
+    var desc=form.descripcion||'Aporte al fondo';
+    st.fondo.unshift(Object.assign({},base,{tipo:'aporte',user:usuario,categoria:'Aporte',descripcion:desc}));
+    movAPI={id:id,tipo:'fondo_aporte',user:usuario,monto:m,descripcion:desc,categoria:'Aporte',dest:'',registro:'real',fecha:form.fecha};
+  } else if(form.dest==='fondo'){
+    st.fondo.unshift(Object.assign({},base,{tipo:'gasto',user:usuario}));
+    movAPI={id:id,tipo:'fondo_gasto',user:usuario,monto:m,descripcion:form.descripcion,categoria:form.categoria,dest:'',registro:reg,fecha:form.fecha};
+  } else if(form.dest==='proyecto'){
+    var apt={id:id,proyectoId:String(form.proyectoId),user:usuario,monto:m,descripcion:form.descripcion||'Aporte',fecha:form.fecha};
+    st.proyectoAportes.unshift(apt);
+    movAPI={id:id,tipo:'proyecto_aporte',user:usuario,monto:m,descripcion:form.descripcion||'Aporte',categoria:'Proyecto',dest:String(form.proyectoId||''),registro:'real',fecha:form.fecha};
+  }
+  guardarLocal();
+  if(movAPI)postAPI('addMovimiento',{mov:movAPI});
+  // Si viene de un ítem de la Matriz → marcarlo como Pagado
+  if(form.filaId){
+    st.filas=st.filas.map(function(f){
+      return f.id===form.filaId?Object.assign({},f,{estado:'Pagado'}):f;
+    });
+    guardarMatrizAPI();
+  }
+  modal=null;render();
+}
+
+function onTxt(el){
+  var id=+el.dataset.id,campo=el.dataset.campo,val=el.value.trim();
+  st.filas=st.filas.map(function(f){if(f.id!==id)return f;var c=Object.assign({},f);c[campo]=val||f[campo];return c;});
+  guardarMatrizAPI();
+}
+function onNum(el){
+  var id=+el.dataset.id,val=el.value===''?0:+el.value;
+  st.filas=st.filas.map(function(f){return f.id!==id?f:Object.assign({},f,{monto:val});});
+  guardarMatrizAPI();render();
+}
+function onPct(el){
+  var id=+el.dataset.id,val=clamp(el.value,0,100);
+  st.filas=st.filas.map(function(f){return f.id!==id?f:Object.assign({},f,{pG:val});});
+  guardarMatrizAPI();render();
+}
+function onEst(sel){
+  var id=+sel.dataset.id,val=sel.value;
+  st.filas=st.filas.map(function(f){return f.id!==id?f:Object.assign({},f,{estado:val});});
+  guardarMatrizAPI();render();
+}
+function addFila(){
+  st.filas.push({id:Date.now(),rubro:'Nuevo item',monto:0,vence:'Mensual',pG:50,estado:'Pendiente'});
+  guardarMatrizAPI();render();
+  setTimeout(function(){var ins=document.querySelectorAll('.inp-r');var l=ins[ins.length-1];if(l){l.focus();l.select();}},40);
+}
+function delFila(btn){
+  var id=+btn.dataset.id,f=st.filas.find(function(f){return f.id===id;});
+  if(!f)return;
+  if(st.filas.length<=1){alert('Debe haber al menos un item.');return;}
+  if(!confirm('Eliminar "'+f.rubro+'"?'))return;
+  st.filas=st.filas.filter(function(f){return f.id!==id;});
+  guardarMatrizAPI();render();
+}
+function resetMatriz(){
+  if(!confirm('Reiniciar la Matriz?\n\nSe restauraran los items originales.\nLos ingresos y gastos personales NO se borran.'))return;
+  st.filas=FILAS_BASE.map(function(f){return Object.assign({},f);});
+  guardarMatrizAPI();render();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+cargarLocal();
+render();
+if(usuario&&API_URL)cargarDesdeAPI();
+else setSyncDot(API_URL?'loading':'local');
+</script>
+
+<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1e3a5f;color:white;padding:14px 16px;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,.25)">
+  <span style="font-size:30px;flex-shrink:0">&#127968;</span>
+  <div style="flex:1;min-width:0">
+    <div style="font-size:13px;font-weight:700">Finanzas del Hogar</div>
+    <div style="font-size:11px;opacity:.7;margin-top:1px" id="pwa-sub">Instala la app para acceso rapido sin internet</div>
+  </div>
+  <button id="pwa-btn" onclick="pwaInstalar()" style="background:#3b82f6;border:none;color:white;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">Instalar</button>
+  <button onclick="document.getElementById('pwa-banner').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:22px;padding:2px 4px;line-height:1;flex-shrink:0">x</button>
+</div>
+
+<script>
+if('serviceWorker' in navigator && location.protocol === 'https:'){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+  });
+}
+var _pwa=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();_pwa=e;
+  document.getElementById('pwa-banner').style.display='flex';
+});
+window.addEventListener('appinstalled',function(){
+  document.getElementById('pwa-banner').style.display='none';_pwa=null;
+});
+function pwaInstalar(){
+  if(_pwa){
+    _pwa.prompt();
+    _pwa.userChoice.then(function(r){
+      if(r.outcome==='accepted')document.getElementById('pwa-banner').style.display='none';
+      _pwa=null;
+    });
+  } else {
+    alert('En iPhone/Safari:\n1. Toca el boton Compartir (cuadro con flecha arriba)\n2. Toca "Anadir a pantalla de inicio"\n3. Confirma con "Anadir"');
+  }
+}
+var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+if(isIOS&&!isStandalone){
+  document.getElementById('pwa-banner').style.display='flex';
+  document.getElementById('pwa-sub').textContent='Toca Compartir y luego Anadir a pantalla de inicio';
+  document.getElementById('pwa-btn').textContent='Ver como';
+}
+</script>
+</body>
+</html>
