@@ -444,7 +444,7 @@ function vResumen(){
 // ── MODAL ─────────────────────────────────────────────────────────────
 function renderModal(){
   var isIng=modal==='ingreso',cats=isIng?I_CATS:G_CATS;
-  var dests='';
+  var dests='',filasSel='';
   if(!isIng){
     var opts=[
       {id:'personal',ico:'👛',lbl:'De mi bolsillo',sub:'Sale de mis ingresos personales'},
@@ -460,6 +460,17 @@ function renderModal(){
         '</button>';
       }).join('')+
     '</div></div>';
+
+    if(form.dest==='fondo'){
+      filasSel='<div class="f-grp"><label class="f-lbl">Item de la Matriz (autocompleta)</label>'+
+        '<select class="f-inp" onchange="selFila(this.value)">'+
+        '<option value="">-- Elegir item --</option>'+
+        st.filas.map(function(f){
+          return'<option value="'+f.id+'"'+(form.filaId===f.id?' selected':'')+'>'+
+            esc(f.rubro)+' ('+cop(f.monto)+')</option>';
+        }).join('')+
+        '</select></div>';
+    }
   }
   return'<div class="overlay" onclick="ovClick(event)"><div class="modal" id="mbox">'+
     '<div class="modal-hdr"><span class="modal-ttl">'+(isIng?'Nuevo ingreso':'Nuevo gasto / aporte')+'</span>'+
@@ -468,7 +479,7 @@ function renderModal(){
     '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="setF(\'descripcion\',this.value)"></div>'+
     '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="setF(\'categoria\',this.value)">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
     '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="setF(\'fecha\',this.value)"></div>'+
-    dests+
+    dests+filasSel+
     '<button class="btn-save" style="background:'+(isIng?'#059669':uc())+'" onclick="saveModal()">Guardar</button>'+
   '</div></div>';
 }
@@ -486,10 +497,25 @@ function setF(k,v){if(form)form[k]=v;}
 function elegirU(u){usuario=u;localStorage.setItem(UK,u);view='matriz';render();if(API_URL)cargarDesdeAPI();}
 function cambiarU(){if(confirm('Cambiar de usuario?')){usuario=null;localStorage.removeItem(UK);render();}}
 function setView(v){view=v;render();}
-function openModal(type,dest){modal=type;form={monto:'',descripcion:'',fecha:todayStr(),categoria:type==='ingreso'?'Salario':'Alimentacion',dest:dest||'personal'};render();setTimeout(function(){var el=document.getElementById('fm');if(el)el.focus();},60);}
+function openModal(type,dest){
+  modal=type;
+  form={monto:'',descripcion:'',fecha:todayStr(),categoria:type==='ingreso'?'Salario':'Alimentacion',dest:dest||'personal',filaId:''};
+  render();
+  setTimeout(function(){var el=document.getElementById('fm');if(el)el.focus();},60);
+}
 function closeModal(){modal=null;render();}
 function ovClick(e){if(e.target.classList.contains('overlay'))closeModal();}
 function setDest(d){form.dest=d;render();}
+function selFila(id){
+  if(!id)return;
+  var f=st.filas.find(function(f){return f.id===+id;});
+  if(!f)return;
+  form.filaId=+id;
+  form.descripcion=f.rubro;
+  form.monto=f.monto;
+  form.categoria='Vivienda'; // categoria generica para gastos de hogar
+  render();
+}
 
 function saveModal(){
   var m=parseFloat(form.monto);
