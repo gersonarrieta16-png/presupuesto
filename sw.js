@@ -1,9 +1,8 @@
-const CACHE = 'finanzas-v2';
+const CACHE = 'finanzas-v3';
 const ARCHIVOS = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg',
   './icon-192.png',
   './icon-512.png'
 ];
