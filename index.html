@@ -171,7 +171,12 @@ function cop(v){
 }
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function clamp(v,a,b){var n=+v;return isNaN(n)?a:Math.min(b,Math.max(a,n));}
-function fmtDate(d){if(!d)return'';return new Date(d+'T12:00:00').toLocaleDateString('es-CO',{day:'2-digit',month:'short'});}
+function fmtDate(d){
+  if(!d||d==='undefined'||d==='null'||d==='')return'Sin fecha';
+  var dt=new Date(d+'T12:00:00');
+  if(isNaN(dt.getTime()))return'Sin fecha';
+  return dt.toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
+}
 function todayStr(){return new Date().toISOString().split('T')[0];}
 function uc(){return usuario==='gerson'?'#3b82f6':'#8b5cf6';}
 function uname(u){return u==='gerson'?'Gerson':'Saudith';}
@@ -527,11 +532,18 @@ function selFila(id){
   if(!f)return;
   form.filaId=+id;
   form.descripcion=f.rubro;
-  // Calcular la parte que le toca al usuario según el % de la Matriz
   var pct=usuario==='gerson'?f.pG:(100-f.pG);
   form.monto=Math.round(f.monto*pct/100);
-  form.dest='personal'; // pago de mi parte personal
+  form.dest='personal';
   form.registro='real';
+  // Categoría automática según el rubro
+  var rubro=f.rubro.toLowerCase();
+  if(rubro.indexOf('alimenta')>=0||rubro.indexOf('mercado')>=0)form.categoria='Alimentacion';
+  else if(rubro.indexOf('transporte')>=0||rubro.indexOf('bus')>=0)form.categoria='Transporte';
+  else if(rubro.indexOf('arriendo')>=0||rubro.indexOf('casa')>=0||rubro.indexOf('internet')>=0)form.categoria='Servicios';
+  else if(rubro.indexOf('universidad')>=0||rubro.indexOf('refuerzo')>=0||rubro.indexOf('colegio')>=0)form.categoria='Educacion';
+  else if(rubro.indexOf('cuidadora')>=0||rubro.indexOf('salud')>=0)form.categoria='Salud';
+  else form.categoria='Otro';
   render();
 }
 function saveModal(){
