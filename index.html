@@ -33,8 +33,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#1e
 .hdr-lbl{color:rgba(255,255,255,.7);font-size:11px;margin-bottom:2px}
 .hdr-saldo{color:white;font-size:26px;font-weight:700;letter-spacing:-.5px}
 .hdr-detail{color:rgba(255,255,255,.65);font-size:11px;margin-top:4px}
-.tabs{display:flex;background:#fff;border-bottom:1px solid #e2e8f0}
-.tab{flex:1;border:none;background:transparent;cursor:pointer;padding:9px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:#94a3b8;border-bottom:2px solid transparent}
+.tabs{display:flex;background:#fff;border-bottom:1px solid #e2e8f0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;border:none;background:transparent;cursor:pointer;padding:9px 14px 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:#94a3b8;border-bottom:2px solid transparent;white-space:nowrap}
 .tab.active{font-weight:700;color:var(--uc);border-bottom-color:var(--uc)}
 .tab-ico{font-size:19px}
 .content{padding:14px}
@@ -120,7 +121,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#1e
 
 // ── CONFIGURACION ────────────────────────────────────────────────────
 // Pega aqui la URL de tu GAS web app despues de desplegarlo
-const API_URL = 'https://script.google.com/macros/s/AKfycbzbrakCIFL2aCmd2JPuVheHm3uv_NUmt6MkUgOD92tsLO2BLw4EUlM0vJSaUzDKLVun/exec';   // Ej: 'https://script.google.com/macros/s/XXX/exec'
+const API_URL = '';   // Ej: 'https://script.google.com/macros/s/XXX/exec'
 
 const SK   = 'mff_v4';
 const UK   = 'mff_usuario';
@@ -223,12 +224,18 @@ function postAPI(action,payload){
   if(!API_URL){setSyncDot('local');return;}
   setSyncDot('syncing');
   guardarLocal();
-  fetch(API_URL,{
-    method:'POST',
-    mode:'no-cors',
-    headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify(Object.assign({action:action},payload))
-  }).then(function(){setSyncDot('ok');}).catch(function(){setSyncDot('error');});
+  // Determinar qué parámetro usar según la acción
+  var paramKey = action==='addMovimiento' ? 'mov'
+               : action==='saveMatriz'    ? 'filas'
+               : action==='addProyecto'   ? 'proyecto'
+               : null;
+  if(!paramKey){setSyncDot('error');return;}
+  var paramVal = action==='saveMatriz' ? payload.filas : payload[paramKey];
+  var url = API_URL+'?action='+action+'&'+paramKey+'='+encodeURIComponent(JSON.stringify(paramVal));
+  fetch(url)
+    .then(function(r){return r.json();})
+    .then(function(d){setSyncDot(d.ok?'ok':'error');})
+    .catch(function(){setSyncDot('error');});
 }
 
 function cargarDesdeAPI(){
