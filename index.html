@@ -575,6 +575,8 @@ function vFamilia(){
 
 function vResumen(){
   var tot=totMatriz(),my=calcU(usuario),oth=calcU(other()),f=calcFondo();
+  var gFamBan=(st.gerson.gastos||[]).filter(function(g){return g.dest==='familiar';}).reduce(function(s,g){return s+g.monto;},0);
+  var sFamBan=(st.saudith.gastos||[]).filter(function(g){return g.dest==='familiar';}).reduce(function(s,g){return s+g.monto;},0);
   var ub=usuario==='gerson'?'#eff6ff':'#f5f3ff',ut=usuario==='gerson'?'#1e40af':'#5b21b6';
   var ob=other()==='gerson'?'#eff6ff':'#f5f3ff',ot=other()==='gerson'?'#1e40af':'#5b21b6';
   var mp=tot.monto>0?Math.round((usuario==='gerson'?tot.gerson:tot.saudith)/tot.monto*100):50;
