@@ -160,6 +160,7 @@ let form       = {};
 let syncStatus = API_URL ? 'loading' : 'local';
 let matrizTimer = null;
 var modalProy = false;
+var expFila = {};
 var formProy = {};
 
 let st = {
@@ -358,6 +359,19 @@ function renderBienvenida(){
 }
 
 // ── VIEW: MATRIZ ──────────────────────────────────────────────────────
+
+function blurOnEnter(el,e){if(e.key==="Enter")el.blur();}
+function ciclarEst(id){
+  var ests=['Pendiente','Pagado','Gratuidad'];
+  st.filas=st.filas.map(function(f){
+    if(f.id!==+id)return f;
+    var next=ests[(ests.indexOf(f.estado)+1)%ests.length];
+    return Object.assign({},f,{estado:next});
+  });
+  guardarMatrizAPI();render();
+}
+function toggleFila(id){expFila[id]=!expFila[id];render();}
+
 function vMatriz(){
   var tot=totMatriz();
   var pag  =st.filas.filter(function(f){return f.estado==='Pagado';}).length;
@@ -365,35 +379,86 @@ function vMatriz(){
   var prog =total>0?Math.round(pag/total*100):0;
   var pGp  =tot.monto>0?Math.round(tot.gerson /tot.monto*100):0;
   var pSp  =tot.monto>0?Math.round(tot.saudith/tot.monto*100):0;
-  var cards=
+
+  var resumen=
     '<div class="grid2">'+
       '<div class="crd c-full"><div class="crd-lbl">Total pasivos &middot; '+MESES[st.mes]+' '+st.ano+'</div><div class="crd-val">'+cop(tot.monto)+'</div><div class="crd-sub">'+pag+' de '+total+' items pagados</div><div class="crd-prog"><div class="crd-fill" style="width:'+prog+'%"></div></div></div>'+
       '<div class="crd c-blue"><div class="crd-lbl">Aporte Gerson</div><div class="crd-val">'+cop(tot.gerson)+'</div><div class="crd-sub">'+pGp+'% del total</div></div>'+
       '<div class="crd c-purple"><div class="crd-lbl">Aporte Saudith</div><div class="crd-val">'+cop(tot.saudith)+'</div><div class="crd-sub">'+pSp+'% del total</div></div>'+
     '</div>';
+
   var sels='<div class="sel-wrap"><select onchange="st.mes=+this.value;guardarLocal()">'+MESES.map(function(m,i){return'<option value="'+i+'"'+(i===st.mes?' selected':'')+'>'+m+'</option>';}).join('')+'</select><select onchange="st.ano=+this.value;guardarLocal()">'+ANOS.map(function(a){return'<option'+(a===st.ano?' selected':'')+'>'+a+'</option>';}).join('')+'</select></div>';
-  var acts='<div class="tbl-acts"><button class="btn-tbl" onclick="addFila()">+ Agregar item</button><button class="btn-tbl" onclick="window.print()">Imprimir</button><button class="btn-tbl danger" onclick="resetMatriz()">Reiniciar</button></div>';
-  var rows=st.filas.map(function(f){
-    var pS2=100-f.pG,aG=+f.monto*f.pG/100,aS=+f.monto*pS2/100;
-    return'<tr>'+
-      '<td><input type="text" class="inp-r" value="'+esc(f.rubro)+'" data-id="'+f.id+'" data-campo="rubro" onfocus="this.select()" onblur="onTxt(this)" onkeydown="if(event.key===\'Enter\')this.blur()"></td>'+
-      '<td><input type="number" class="inp-m" value="'+f.monto+'" min="0" step="1000" data-id="'+f.id+'" data-campo="monto" onchange="onNum(this)"></td>'+
-      '<td><input type="text" class="inp-v" value="'+esc(f.vence)+'" data-id="'+f.id+'" data-campo="vence" onfocus="this.select()" onblur="onTxt(this)" onkeydown="if(event.key===\'Enter\')this.blur()"></td>'+
-      '<td><div class="pct-w"><input type="number" class="inp-p" value="'+f.pG+'" min="0" max="100" step="5" data-id="'+f.id+'" data-campo="pG" onchange="onPct(this)"><span class="pct-s">%G</span></div></td>'+
-      '<td style="color:#64748b;font-size:11px">'+pS2+'%</td>'+
-      '<td style="color:#1e40af;font-weight:700;font-size:11px">'+cop(aG)+'</td>'+
-      '<td style="color:#5b21b6;font-weight:700;font-size:11px">'+cop(aS)+'</td>'+
-      '<td><select class="sel-est '+f.estado.toLowerCase()+'" data-id="'+f.id+'" onchange="onEst(this)">'+
-        '<option'+(f.estado==='Pendiente'?' selected':'')+' value="Pendiente">Pendiente</option>'+
-        '<option'+(f.estado==='Pagado'?' selected':'')+' value="Pagado">Pagado</option>'+
-        '<option'+(f.estado==='Gratuidad'?' selected':'')+' value="Gratuidad">Gratuidad</option>'+
-      '</select></td>'+
-      '<td><button class="btn-del" data-id="'+f.id+'" onclick="delFila(this)">x</button></td>'+
-    '</tr>';
+
+  var acts='<div class="tbl-acts">'+
+    '<button class="btn-tbl" onclick="addFila()">+ Agregar</button>'+
+    '<button class="btn-tbl" onclick="window.print()">Imprimir</button>'+
+    '<button class="btn-tbl danger" onclick="resetMatriz()">Reiniciar</button>'+
+  '</div>';
+
+  var tarjetas=st.filas.map(function(f){
+    var pS2=100-f.pG, aG=+f.monto*f.pG/100, aS=+f.monto*pS2/100;
+    var exp=!!expFila[f.id];
+    var estBg  =f.estado==='Pagado'?'#d1fae5':f.estado==='Gratuidad'?'#ede9fe':'#fef3c7';
+    var estTx  =f.estado==='Pagado'?'#065f46':f.estado==='Gratuidad'?'#5b21b6':'#92400e';
+    var estIco =f.estado==='Pagado'?'&#10003;':f.estado==='Gratuidad'?'&#127891;':'&#8987;';
+
+    var editar=exp?
+      '<div style="border-top:1px solid #f1f5f9;margin-top:10px;padding-top:10px">'+
+        '<div style="margin-bottom:8px">'+
+          '<label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Rubro</label>'+
+          '<input type="text" class="inp-r" style="width:100%;box-sizing:border-box" value="'+esc(f.rubro)+'" data-id="'+f.id+'" data-campo="rubro" onfocus="this.select()" onblur="onTxt(this)" onkeydown="blurOnEnter(this,event)">'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
+          '<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Monto</label>'+
+          '<input type="number" class="inp-m" style="width:100%;box-sizing:border-box" value="'+f.monto+'" data-id="'+f.id+'" data-campo="monto" onchange="onNum(this)"></div>'+
+          '<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">Vence</label>'+
+          '<input type="text" class="inp-v" style="width:100%;box-sizing:border-box" value="'+esc(f.vence)+'" data-id="'+f.id+'" data-campo="vence" onfocus="this.select()" onblur="onTxt(this)" onkeydown="blurOnEnter(this,event)"></div>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+          '<div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">% Gerson</label>'+
+          '<div class="pct-w"><input type="number" class="inp-p" value="'+f.pG+'" min="0" max="100" step="5" data-id="'+f.id+'" data-campo="pG" onchange="onPct(this)"><span class="pct-s">%</span></div></div>'+
+          '<div style="display:flex;align-items:flex-end">'+
+          '<button class="btn-del" data-id="'+f.id+'" onclick="delFila(this)" style="width:100%;height:32px;border-radius:8px;font-size:12px">&#128465; Eliminar</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>'
+    :'';
+
+    return'<div style="background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px;margin-bottom:8px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">'+
+          '<button onclick="ciclarEst('+f.id+')" style="background:'+estBg+';color:'+estTx+';border:none;border-radius:6px;padding:4px 9px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">'+estIco+' '+f.estado+'</button>'+
+          '<span style="font-size:14px;font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f.rubro)+'</span>'+
+        '</div>'+
+        '<button onclick="toggleFila('+f.id+')" style="background:none;border:none;cursor:pointer;font-size:16px;color:#94a3b8;padding:0 2px;flex-shrink:0">'+(exp?'&#9650;':'&#9660;')+'</button>'+
+      '</div>'+
+      '<div style="font-size:12px;color:#64748b;margin-bottom:8px">'+cop(f.monto)+' &nbsp;&middot;&nbsp; '+esc(f.vence)+'</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<div style="flex:1;background:#eff6ff;border-radius:8px;padding:6px 10px">'+
+          '<div style="font-size:10px;color:#1e40af;font-weight:600;margin-bottom:2px">Gerson '+f.pG+'%</div>'+
+          '<div style="font-size:14px;font-weight:700;color:#1e40af">'+cop(aG)+'</div>'+
+        '</div>'+
+        '<div style="flex:1;background:#f5f3ff;border-radius:8px;padding:6px 10px">'+
+          '<div style="font-size:10px;color:#5b21b6;font-weight:600;margin-bottom:2px">Saudith '+pS2+'%</div>'+
+          '<div style="font-size:14px;font-weight:700;color:#5b21b6">'+cop(aS)+'</div>'+
+        '</div>'+
+      '</div>'+
+      editar+
+    '</div>';
   }).join('');
-  var tf='<tr><td style="color:#64748b">TOTALES</td><td>'+cop(tot.monto)+'</td><td colspan="3" style="color:#94a3b8">--</td><td style="color:#1e40af">'+cop(tot.gerson)+'</td><td style="color:#5b21b6">'+cop(tot.saudith)+'</td><td colspan="2" style="color:#94a3b8">--</td></tr>';
-  return cards+sels+acts+'<div class="tbl-wrap"><table><thead><tr><th>Rubro</th><th>Monto</th><th>Vence</th><th>%G</th><th>%S</th><th style="color:#1e40af">Gerson</th><th style="color:#5b21b6">Saudith</th><th>Estado</th><th></th></tr></thead><tbody>'+rows+'</tbody><tfoot>'+tf+'</tfoot></table></div>';
+
+  // Total bar al fondo
+  var totalBar='<div style="background:#1e3a5f;border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:4px">'+
+    '<span style="color:rgba(255,255,255,.7);font-size:12px;font-weight:600">TOTAL PASIVOS</span>'+
+    '<div style="text-align:right">'+
+      '<div style="color:white;font-size:18px;font-weight:700">'+cop(tot.monto)+'</div>'+
+      '<div style="color:rgba(255,255,255,.6);font-size:11px">G: '+cop(tot.gerson)+' &nbsp;|&nbsp; S: '+cop(tot.saudith)+'</div>'+
+    '</div>'+
+  '</div>';
+
+  return resumen+sels+acts+tarjetas+totalBar;
 }
+
 
 // ── VIEW: BILLETERA ───────────────────────────────────────────────────
 function vBilletera(){
