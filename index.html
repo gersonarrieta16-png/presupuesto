@@ -641,9 +641,7 @@ function renderModal(){
       '</div>';
     }
     if(form.dest==='familiar'){
-      var filaLbl='Item de la Matriz que estas pagando'
-        ?'Gasto del hogar que estas pagando de tu bolsillo (opcional)'
-        :'Item de la Matriz que vas a pagar del Fondo';
+      var filaLbl='Item de la Matriz que estas pagando';
       filasSel='<div class="f-grp"><label class="f-lbl">'+filaLbl+'</label>'+
         '<select class="f-inp" onchange="selFila(this.value)">'+
         '<option value="">-- Elegir item de la Matriz --</option>'+
@@ -661,7 +659,7 @@ function renderModal(){
     '<div class="f-grp"><label class="f-lbl">Descripcion (opcional)</label><input class="f-inp" type="text" placeholder="En que?" id="fd" value="'+esc(form.descripcion||'')+'" oninput="setF(\'descripcion\',this.value)"></div>'+
     '<div class="f-grp"><label class="f-lbl">Categoria</label><select class="f-inp" onchange="setF(\'categoria\',this.value)">'+cats.map(function(c){return'<option'+(form.categoria===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
     '<div class="f-grp"><label class="f-lbl">Fecha</label><input class="f-inp" type="date" value="'+esc(form.fecha||'')+'" oninput="setF(\'fecha\',this.value)"></div>'+
-    dests+tipoToggle+filasSel+formaToggle+proyectoSel+
+    dests+tipoToggle+formaToggle+filasSel+proyectoSel+
     '<button class="btn-save" style="background:'+(isIng?'#059669':uc())+'" onclick="saveModal()">Guardar</button>'+
   '</div></div>';
 }
@@ -823,6 +821,8 @@ function setForma(f){
       var pct=usuario==='gerson'?fila.pG:(100-fila.pG);
       form.monto=Math.round(fila.monto*pct/100);
     }
+  } else if(f===1){
+    form.monto='';
   }
   render();
 }
@@ -851,9 +851,12 @@ function selFila(id){
   form.registro='real';
   render();
 }
+var guardando=false;
 function saveModal(){
+  if(guardando)return;
   var m=parseFloat(form.monto);
   if(!m||m<=0){alert('Ingresa un monto valido.');return;}
+  guardando=true;
   var id=Date.now();
   var reg=form.registro||'real';
   var base={id:id,monto:m,descripcion:form.descripcion,categoria:form.categoria,fecha:form.fecha,registro:reg};
@@ -879,7 +882,7 @@ function saveModal(){
   }
   guardarLocal();
   if(movAPI)postAPI('addMovimiento',{mov:movAPI});
-  modal=null;render();
+  modal=null;guardando=false;render();
 }
 
 function onTxt(el){
