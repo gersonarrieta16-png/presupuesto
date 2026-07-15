@@ -537,6 +537,8 @@ function vFamilia(){
     var sPag=(st.saudith.gastos||[]).filter(function(g){return g.dest==='familiar'&&String(g.filaId)===String(f.id);}).reduce(function(s,g){return s+g.monto;},0);
     var gFalta=Math.max(0,gDebido-gPag);
     var sFalta=Math.max(0,sDebido-sPag);
+    var gExceso=Math.max(0,gPag-gDebido);
+    var sExceso=Math.max(0,sPag-sDebido);
     var cubierto=gFalta===0&&sFalta===0&&f.estado!=='Gratuidad';
     var gratuidad=f.estado==='Gratuidad';
     var borderColor=gratuidad?'#ede9fe':cubierto?'#d1fae5':gPag+sPag>0?'#fde68a':'#e2e8f0';
@@ -555,12 +557,12 @@ function vFamilia(){
           '<div style="flex:1;background:#eff6ff;border-radius:8px;padding:7px 10px">'+
             '<div style="font-size:10px;color:#1e40af;font-weight:600">Gerson &mdash; '+f.pG+'%</div>'+
             '<div style="font-size:12px;color:#1e40af">Debe: '+cop(gDebido)+'</div>'+
-            '<div style="font-size:13px;font-weight:700;color:'+(gFalta===0?'#065f46':'#1e40af')+'">Pago: '+cop(gPag)+(gFalta>0?' <span style="color:#dc2626;font-size:11px">Falta '+cop(gFalta)+'</span>':'')+'</div>'+
+            '<div style="font-size:13px;font-weight:700;color:'+(gFalta===0?'#065f46':'#1e40af')+'">Pago: '+cop(gPag)+(gFalta>0?' <span style="color:#dc2626;font-size:11px">Falta '+cop(gFalta)+'</span>':gExceso>0?' <span style="color:#059669;font-size:11px">+'+cop(gExceso)+' de mas</span>':'')+'</div>'+
           '</div>'+
           '<div style="flex:1;background:#f5f3ff;border-radius:8px;padding:7px 10px">'+
             '<div style="font-size:10px;color:#5b21b6;font-weight:600">Saudith &mdash; '+(100-f.pG)+'%</div>'+
             '<div style="font-size:12px;color:#5b21b6">Debe: '+cop(sDebido)+'</div>'+
-            '<div style="font-size:13px;font-weight:700;color:'+(sFalta===0?'#065f46':'#5b21b6')+'">Pago: '+cop(sPag)+(sFalta>0?' <span style="color:#dc2626;font-size:11px">Falta '+cop(sFalta)+'</span>':'')+'</div>'+
+            '<div style="font-size:13px;font-weight:700;color:'+(sFalta===0?'#065f46':'#5b21b6')+'">Pago: '+cop(sPag)+(sFalta>0?' <span style="color:#dc2626;font-size:11px">Falta '+cop(sFalta)+'</span>':sExceso>0?' <span style="color:#059669;font-size:11px">+'+cop(sExceso)+' de mas</span>':'')+'</div>'+
           '</div>'+
         '</div>'
       )+
